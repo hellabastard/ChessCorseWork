@@ -2,42 +2,10 @@ package board
 
 import (
 	"errors"
-	"fmt"
 )
 
-// Piece представляет тип шахматной фигуры
-type Piece int
-
-// Константы для типов фигур
-const (
-	Empty Piece = iota
-	Pawn
-	Knight
-	Bishop
-	Rook
-	Queen
-	King
-)
-
-// Color представляет цвет фигуры
-type Color int
-
-// Константы для цветов
-const (
-	White Color = iota
-	Black
-)
-
-// Square представляет клетку на шахматной доске
-type Square struct {
-	Piece Piece
-	Color Color
-}
-
-// Board представляет шахматную доску
 type Board [8][8]Square
 
-// NewBoard создает новую доску с начальной расстановкой фигур
 func NewBoard() Board {
 	var b Board
 
@@ -62,54 +30,20 @@ func NewBoard() Board {
 	// Остальные клетки пустые
 	for i := 2; i < 6; i++ {
 		for j := 0; j < 8; j++ {
-			b[i][j] = Square{Empty, White} // Цвет для пустых клеток не имеет значения
+			b[i][j] = Square{Empty, White}
 		}
 	}
 
 	return b
 }
 
-// PrintBoard выводит доску в консоль
-func (b Board) PrintBoard() {
-	for i := 7; i >= 0; i-- {
-		for j := 0; j < 8; j++ {
-			square := b[i][j]
-			var pieceSymbol string
-			switch square.Piece {
-			case Empty:
-				pieceSymbol = "."
-			case Pawn:
-				pieceSymbol = "P"
-			case Knight:
-				pieceSymbol = "N"
-			case Bishop:
-				pieceSymbol = "B"
-			case Rook:
-				pieceSymbol = "R"
-			case Queen:
-				pieceSymbol = "Q"
-			case King:
-				pieceSymbol = "K"
-			}
-			if square.Color == Black {
-				pieceSymbol = string(pieceSymbol[0] + 32) // Преобразуем в нижний регистр для черных фигур
-			}
-			fmt.Printf("%2s ", pieceSymbol)
-		}
-		fmt.Println()
-	}
-}
-
-// GetPiece возвращает фигуру на указанной клетке
 func (b Board) GetPiece(x, y int) (Piece, Color, error) {
 	if x < 0 || x >= 8 || y < 0 || y >= 8 {
 		return Empty, White, errors.New("координаты за пределами доски")
 	}
-	square := b[x][y]
-	return square.Piece, square.Color, nil
+	return b[x][y].Piece, b[x][y].Color, nil
 }
 
-// SetPiece устанавливает фигуру на указанную клетку
 func (b *Board) SetPiece(x, y int, piece Piece, color Color) error {
 	if x < 0 || x >= 8 || y < 0 || y >= 8 {
 		return errors.New("координаты за пределами доски")
@@ -118,10 +52,85 @@ func (b *Board) SetPiece(x, y int, piece Piece, color Color) error {
 	return nil
 }
 
-// IsEmpty проверяет, пуста ли клетка
 func (b Board) IsEmpty(x, y int) bool {
 	if x < 0 || x >= 8 || y < 0 || y >= 8 {
 		return false
 	}
 	return b[x][y].Piece == Empty
+}
+
+// IsKingInCheck проверяет, находится ли король под шахом
+func (b Board) IsKingInCheck(color Color) bool {
+	// Находим позицию короля
+	var kingX, kingY int
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			piece, pieceColor, _ := b.GetPiece(i, j)
+			if piece == King && pieceColor == color {
+				kingX, kingY = i, j
+				break
+			}
+		}
+	}
+
+	// Определяем цвет противника
+	opponentColor := White
+	if color == White {
+		opponentColor = Black
+	}
+
+	// Проверяем, атакуют ли короля фигуры противника
+	for dx := -1; dx <= 1; dx++ {
+		for dy := -1; dy <= 1; dy++ {
+			if dx == 0 && dy == 0 {
+				continue // Пропускаем клетку короля
+			}
+			x, y := kingX+dx, kingY+dy
+			if x < 0 || x >= 8 || y < 0 || y >= 8 {
+				continue
+			}
+			piece, pieceColor, _ := b.GetPiece(x, y)
+			if pieceColor == opponentColor {
+				// Проверяем, может ли фигура атаковать короля
+				switch piece {
+				case Pawn:
+					if (color == White && dx == -1) || (color == Black && dx == 1) {
+						if dy == -1 || dy == 1 {
+							return true
+						}
+					}
+				case Knight:
+					if (abs(dx) == 2 && abs(dy) == 1) || (abs(dx) == 1 && abs(dy) == 2) {
+						return true
+					}
+				case Bishop:
+					if abs(dx) == abs(dy) {
+						return true
+					}
+				case Rook:
+					if dx == 0 || dy == 0 {
+						return true
+					}
+				case Queen:
+					if abs(dx) == abs(dy) || dx == 0 || dy == 0 {
+						return true
+					}
+				case King:
+					if abs(dx) <= 1 && abs(dy) <= 1 {
+						return true
+					}
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// Вспомогательная функция для вычисления абсолютного значения
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
