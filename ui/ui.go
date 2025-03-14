@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"image/color"
 	"log"
-	"os"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -36,14 +35,21 @@ type ChessApp struct {
 	window               fyne.Window
 	grid                 *fyne.Container
 	infoLabel            *widget.Label
+	logText              *widget.Entry
+	positions            map[string]int // История позиций для правила трёхкратного повторения
 }
 
 func NewChessApp() *ChessApp {
-	return &ChessApp{
+	app := &ChessApp{
 		currentBoard: board.NewBoard(),
 		selectedX:    -1,
 		selectedY:    -1,
+		logText:      widget.NewEntry(),
+		positions:    make(map[string]int), // Инициализируем карту позиций
 	}
+	// Добавляем начальную позицию в историю
+	app.positions[boardToString(app.currentBoard)] = 1
+	return app
 }
 
 func (appl *ChessApp) Run() {
@@ -52,12 +58,140 @@ func (appl *ChessApp) Run() {
 
 	appl.grid = appl.createBoardGrid()
 	appl.infoLabel = widget.NewLabel("Ваш ход. Выберите фигуру.")
+	appl.logText.Disable()
+	appl.logText.MultiLine = true
 
-	content := container.NewBorder(nil, appl.infoLabel, nil, nil, appl.grid)
+	content := container.NewBorder(
+		nil,
+		container.NewVBox(appl.infoLabel, appl.logText),
+		nil,
+		nil,
+		appl.grid,
+	)
 	appl.window.SetContent(content)
-	appl.window.Resize(fyne.NewSize(cellSize*8, cellSize*8+50))
+	appl.window.Resize(fyne.NewSize(cellSize*8, cellSize*8+100))
 	appl.window.Show()
 	myApp.Run()
+}
+
+func (app *ChessApp) logMessage(msg string) {
+	log.Println(msg)
+	app.logText.SetText(app.logText.Text + msg + "\n")
+}
+
+// boardToString создаёт строковый хэш доски для отслеживания позиций
+func boardToString(b board.Board) string {
+	var s string
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			piece, color, _ := b.GetPiece(i, j)
+			s += fmt.Sprintf("%d%d", piece, color)
+		}
+	}
+	return s
+}
+
+func (app *ChessApp) handleCellClick(x, y int) {
+	if app.selectedX == -1 {
+		piece, color, err := app.currentBoard.GetPiece(x, y)
+		if err != nil {
+			app.logMessage(fmt.Sprintf("Ошибка при получении фигуры: %v", err))
+			return
+		}
+		if piece != board.Empty && color == board.White {
+			app.selectedX, app.selectedY = x, y
+			app.infoLabel.SetText(fmt.Sprintf("Выбрана фигура на %c%d", 'a'+y, x+1))
+			app.updateBoard()
+		}
+	} else {
+		piece, color, err := app.currentBoard.GetPiece(x, y)
+		if err != nil {
+			app.logMessage(fmt.Sprintf("Ошибка при получении фигуры: %v", err))
+			return
+		}
+		if piece != board.Empty && color == board.White {
+			app.infoLabel.SetText("Невозможно ходить в клетку с фигурой того же цвета!")
+			return
+		}
+
+		availableMoves := app.getAvailableMoves(app.selectedX, app.selectedY)
+		isValidMove := false
+		for _, m := range availableMoves {
+			if m.ToX == x && m.ToY == y {
+				isValidMove = true
+				break
+			}
+		}
+
+		if !isValidMove {
+			app.infoLabel.SetText("Невозможно ходить в эту клетку!")
+			return
+		}
+
+		m := move.Move{FromX: app.selectedX, FromY: app.selectedY, ToX: x, ToY: y}
+		if err := move.MakeMove(&app.currentBoard, m); err != nil {
+			app.infoLabel.SetText("Некорректный ход: " + err.Error())
+		} else {
+			app.logMessage(fmt.Sprintf("Ход игрока (белые): %s%d-%s%d", string('a'+app.selectedY), app.selectedX+1, string('a'+y), x+1))
+			app.selectedX, app.selectedY = -1, -1
+			// Обновляем историю позиций
+			positionHash := boardToString(app.currentBoard)
+			app.positions[positionHash]++
+			app.updateBoard()
+
+			if move.IsKingInCheck(app.currentBoard, board.Black) && app.isCheckmate(board.Black) {
+				app.infoLabel.SetText("Мат! Белые победили.")
+				app.logMessage("Игра завершена: мат черным. Победитель: Белые")
+				return
+			} else if app.isCheckmate(board.Black) {
+				app.infoLabel.SetText("Пат! Ничья.")
+				app.logMessage("Игра завершена: пат")
+				return
+			} else if move.IsKingInCheck(app.currentBoard, board.White) && app.isCheckmate(board.White) {
+				app.infoLabel.SetText("Мат! Чёрные победили.")
+				app.logMessage("Игра завершена: мат белым. Победитель: Чёрные")
+				return
+			} else if app.positions[positionHash] >= 3 {
+				app.infoLabel.SetText("Ничья по правилу трёхкратного повторения!")
+				app.logMessage("Игра завершена: ничья по правилу трёхкратного повторения")
+				return
+			}
+			// Проверка мата или пата для чёрных
+			if move.IsKingInCheck(app.currentBoard, board.White) && app.isCheckmate(board.White) {
+				app.infoLabel.SetText("Мат! Чёрные победили.")
+				app.logMessage("Игра завершена: мат белым. Победитель: Чёрные")
+				return
+			}
+
+			app.makeAIMove()
+		}
+	}
+}
+
+func (app *ChessApp) makeAIMove() {
+	bestMove := search.FindBestMove(app.currentBoard, 3, board.Black)
+	if err := move.MakeMove(&app.currentBoard, bestMove); err != nil {
+		app.logMessage(fmt.Sprintf("Ошибка при выполнении хода ИИ: %v", err))
+		app.infoLabel.SetText("Ошибка ИИ: " + err.Error())
+	} else {
+		app.logMessage(fmt.Sprintf("Ход ИИ (черные): %s%d-%s%d", string('a'+bestMove.FromY), bestMove.FromX+1, string('a'+bestMove.ToY), bestMove.ToX+1))
+		// Обновляем историю позиций
+		positionHash := boardToString(app.currentBoard)
+		app.positions[positionHash]++
+		app.infoLabel.SetText("ИИ сделал ход. Ваш ход.")
+		app.updateBoard()
+
+		if move.IsKingInCheck(app.currentBoard, board.White) && app.isCheckmate(board.White) {
+			app.infoLabel.SetText("Мат! Черные победили.")
+			app.logMessage("Игра завершена: мат белым. Победитель: Черные")
+		} else if app.isCheckmate(board.White) {
+			app.infoLabel.SetText("Пат! Ничья.")
+			app.logMessage("Игра завершена: пат")
+		} else if app.positions[positionHash] >= 3 {
+			app.infoLabel.SetText("Ничья по правилу трёхкратного повторения!")
+			app.logMessage("Игра завершена: ничья по правилу трёхкратного повторения")
+		}
+	}
 }
 
 func (app *ChessApp) createCell(x, y int) fyne.CanvasObject {
@@ -147,68 +281,6 @@ func (app *ChessApp) createFigure(piece board.Piece, color board.Color) fyne.Can
 	return figure
 }
 
-func (app *ChessApp) handleCellClick(x, y int) {
-	if app.selectedX == -1 {
-		// Выбор фигуры (игрок может ходить только белыми)
-		piece, color, err := app.currentBoard.GetPiece(x, y)
-		if err != nil {
-			log.Printf("Ошибка при получении фигуры: %v", err)
-			return
-		}
-		if piece != board.Empty && color == board.White {
-			app.selectedX, app.selectedY = x, y
-			app.infoLabel.SetText(fmt.Sprintf("Выбрана фигура на %c%d", 'a'+y, x+1))
-			app.updateBoard()
-		}
-	} else {
-		// Проверка, можно ли ходить в выбранную клетку
-		piece, color, err := app.currentBoard.GetPiece(x, y)
-		if err != nil {
-			log.Printf("Ошибка при получении фигуры: %v", err)
-			return
-		}
-
-		// Если в клетке находится фигура того же цвета, ход невозможен
-		if piece != board.Empty && color == board.White {
-			app.infoLabel.SetText("Невозможно ходить в клетку с фигурой того же цвета!")
-			return
-		}
-
-		// Проверяем, является ли клетка допустимой для хода
-		availableMoves := app.getAvailableMoves(app.selectedX, app.selectedY)
-		isValidMove := false
-		for _, m := range availableMoves {
-			if m.ToX == x && m.ToY == y {
-				isValidMove = true
-				break
-			}
-		}
-
-		if !isValidMove {
-			app.infoLabel.SetText("Невозможно ходить в эту клетку!")
-			return
-		}
-
-		// Выполнение хода игрока (белыми)
-		m := move.Move{FromX: app.selectedX, FromY: app.selectedY, ToX: x, ToY: y}
-		if err := move.MakeMove(&app.currentBoard, m); err != nil {
-			app.infoLabel.SetText("Некорректный ход: " + err.Error())
-		} else {
-			app.selectedX, app.selectedY = -1, -1
-			app.updateBoard()
-
-			// Проверка на мат
-			if app.isCheckmate(board.Black) {
-				app.infoLabel.SetText("Мат! Игра окончена.")
-				os.Exit(0)
-			}
-
-			// Переход хода к черным (ИИ)
-			app.makeAIMove()
-		}
-	}
-}
-
 // func (app *ChessApp) handleCellClick(x, y int) {
 // 	if app.selectedX == -1 {
 // 		// Выбор фигуры (игрок может ходить только белыми)
@@ -295,30 +367,18 @@ func (app *ChessApp) getAvailableMoves(x, y int) []move.Move {
 	return availableMoves
 }
 
-func (app *ChessApp) makeAIMove() {
-	log.Println("ИИ делает ход за черных...")
-	bestMove := search.FindBestMove(app.currentBoard, 3, board.Black) // ИИ ходит за черных
-	if err := move.MakeMove(&app.currentBoard, bestMove); err != nil {
-		log.Println("Ошибка ИИ:", err)
-	} else {
-		app.infoLabel.SetText("ИИ сделал ход. Ваш ход.")
-		app.updateBoard()
-
-		// Проверка на мат
-		if app.isCheckmate(board.White) {
-			app.infoLabel.SetText("Мат! Игра окончена.")
-			os.Exit(0)
-		}
-	}
-}
-
 func (app *ChessApp) isCheckmate(color board.Color) bool {
 	moves := move.GenerateMoves(app.currentBoard, color)
-	return len(moves) == 0
+	if len(moves) == 0 {
+		if move.IsKingInCheck(app.currentBoard, color) {
+			return true // Мат
+		}
+		return false // Пат (ничья, но пока не завершаем игру)
+	}
+	return false
 }
 
 func (app *ChessApp) updateBoard() {
-	log.Println("Обновление доски...")
 	app.grid = app.createBoardGrid()
 	app.window.SetContent(container.NewBorder(nil, app.infoLabel, nil, nil, app.grid))
 	app.window.Content().Refresh()

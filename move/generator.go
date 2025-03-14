@@ -3,51 +3,6 @@ package move
 import "chess-engine/board"
 
 // GenerateMoves генерирует все возможные ходы для указанного цвета
-// func GenerateMoves(b board.Board, color board.Color) []Move {
-// 	var moves []Move
-
-// 	for i := 0; i < 8; i++ {
-// 		for j := 0; j < 8; j++ {
-// 			piece, pieceColor, _ := b.GetPiece(i, j)
-// 			if pieceColor != color || piece == board.Empty {
-// 				continue
-// 			}
-
-// 			switch piece {
-// 			case board.Pawn:
-// 				moves = append(moves, generatePawnMoves(b, i, j, color)...)
-// 			case board.Knight:
-// 				moves = append(moves, generateKnightMoves(b, i, j, color)...)
-// 			case board.Bishop:
-// 				moves = append(moves, generateBishopMoves(b, i, j, color)...)
-// 			case board.Rook:
-// 				moves = append(moves, generateRookMoves(b, i, j, color)...)
-// 			case board.Queen:
-// 				moves = append(moves, generateQueenMoves(b, i, j, color)...)
-// 			case board.King:
-// 				moves = append(moves, generateKingMoves(b, i, j, color)...)
-// 			}
-// 		}
-// 	}
-
-// 	// Если король под шахом, фильтруем ходы, чтобы оставить только те, которые снимают шах
-// 	if b.IsKingInCheck(color) {
-// 		var validMoves []Move
-// 		for _, m := range moves {
-// 			newBoard := b
-// 			if err := MakeMove(&newBoard, m); err == nil {
-// 				if !newBoard.IsKingInCheck(color) {
-// 					validMoves = append(validMoves, m)
-// 				}
-// 			}
-// 		}
-// 		return validMoves
-// 	}
-
-// 	return moves
-// }
-
-// GenerateMoves генерирует все возможные ходы для указанного цвета
 func GenerateMoves(b board.Board, color board.Color) []Move {
 	var moves []Move
 
@@ -82,7 +37,7 @@ func GenerateMoves(b board.Board, color board.Color) []Move {
 	for _, m := range moves {
 		newBoard := b
 		if err := MakeMove(&newBoard, m); err == nil {
-			if !newBoard.IsKingInCheck(color) {
+			if !IsKingInCheck(newBoard, color) { // Используем IsKingInCheck напрямую, так как она в том же пакете
 				validMoves = append(validMoves, m)
 			}
 		}
@@ -283,4 +238,23 @@ func generateStraightMoves(b board.Board, x, y int, color board.Color) []Move {
 	}
 
 	return moves
+}
+
+// GenerateMovesForPiece генерирует ходы для конкретной фигуры (экспортируемая функция)
+func GenerateMovesForPiece(b board.Board, x, y int, color board.Color, piece board.Piece) []Move {
+	switch piece {
+	case board.Pawn:
+		return generatePawnMoves(b, x, y, color)
+	case board.Knight:
+		return generateKnightMoves(b, x, y, color)
+	case board.Bishop:
+		return generateBishopMoves(b, x, y, color)
+	case board.Rook:
+		return generateRookMoves(b, x, y, color)
+	case board.Queen:
+		return generateQueenMoves(b, x, y, color)
+	case board.King:
+		return generateKingMoves(b, x, y, color)
+	}
+	return nil
 }
