@@ -2,30 +2,21 @@ package search
 
 import (
 	"chess-engine/board"
-	"chess-engine/evaluation"
+	"chess-engine/evaluation" // Убедимся, что evaluation импортирован
 	"chess-engine/move"
 	"fmt"
 	"math"
-	"math/rand"
 	"sort"
 	"time"
 )
 
 var transpositionTable = make(map[string]SearchResult)
-
-// Killer Moves (два слота на каждую глубину до 32)
 var killerMoves [32][2]move.Move
-
-// History Heuristic (успешность ходов: [piece][toSquare])
 var history [12][64]int
 
 type SearchResult struct {
 	BestMove move.Move
 	Score    int
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
 }
 
 func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer bool, deadline time.Time) SearchResult {
@@ -42,7 +33,6 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 		return SearchResult{Score: QuiescenceSearch(b, alpha, beta, maximizingPlayer, 4, deadline)}
 	}
 
-	// Null Move Pruning
 	color := board.Black
 	if maximizingPlayer {
 		color = board.White
@@ -97,7 +87,9 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 				}
 				piece, _, _ := b.GetPiece(m.FromX, m.FromY)
 				pieceIndex := int(piece) + 6*int(color)
-				history[pieceIndex][m.ToX*8+m.ToY] += depth * depth
+				if pieceIndex < 12 {
+					history[pieceIndex][m.ToX*8+m.ToY] += depth * depth
+				}
 				break
 			}
 		} else {
@@ -113,7 +105,9 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 				}
 				piece, _, _ := b.GetPiece(m.FromX, m.FromY)
 				pieceIndex := int(piece) + 6*int(color)
-				history[pieceIndex][m.ToX*8+m.ToY] += depth * depth
+				if pieceIndex < 12 {
+					history[pieceIndex][m.ToX*8+m.ToY] += depth * depth
+				}
 				break
 			}
 		}
@@ -127,7 +121,6 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	return result
 }
 
-// Quiescence Search
 func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool, maxDepth int, deadline time.Time) int {
 	if time.Now().After(deadline) || maxDepth <= 0 {
 		return evaluation.Evaluate(b)
@@ -188,7 +181,7 @@ func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool,
 func FindBestMove(b board.Board, depth int, boardColor board.Color) move.Move {
 	maximizingPlayer := (boardColor == board.White)
 	start := time.Now()
-	timeLimit := 5 * time.Second
+	timeLimit := 10 * time.Second // Установлено 10 секунд
 	deadline := start.Add(timeLimit)
 
 	result := Minimax(b, depth, math.MinInt, math.MaxInt, maximizingPlayer, deadline)
@@ -213,7 +206,6 @@ func sortMoves(moves []move.Move, b board.Board, depth int) {
 	sort.Slice(moves, func(i, j int) bool {
 		moveI, moveJ := moves[i], moves[j]
 
-		// Проверка границ
 		if moveI.FromX < 0 || moveI.FromX >= 8 || moveI.FromY < 0 || moveI.FromY >= 8 ||
 			moveI.ToX < 0 || moveI.ToX >= 8 || moveI.ToY < 0 || moveI.ToY >= 8 ||
 			moveJ.FromX < 0 || moveJ.FromX >= 8 || moveJ.FromY < 0 || moveJ.FromY >= 8 ||
@@ -226,36 +218,42 @@ func sortMoves(moves []move.Move, b board.Board, depth int) {
 		targetPieceI, _, _ := b.GetPiece(moveI.ToX, moveI.ToY)
 		targetPieceJ, _, _ := b.GetPiece(moveJ.ToX, moveJ.ToY)
 
+		// MVV-LVA: приоритет взятий более ценных фигур менее ценными
 		scoreI := 0
 		if targetPieceI != board.Empty {
-			scoreI += 10 * int(targetPieceI) // Взятие
+			targetValue := evaluation.PieceValues[targetPieceI] // Теперь доступно
+			pieceValue := evaluation.PieceValues[pieceI]
+			scoreI += targetValue - pieceValue/10 // Бонус за взятие ценной фигуры
 		}
 		if pieceI == board.Pawn && (moveI.ToX == 0 || moveI.ToX == 7) {
-			scoreI += 50 // Превращение
+			scoreI += 900 // Превращение пешки
 		}
 		if pieceI == board.Knight || pieceI == board.Bishop {
-			scoreI += 20 // Развитие
+			scoreI += 20 // Развитие лёгких фигур
 		}
 		if pieceI == board.Pawn && (moveI.ToY == 3 || moveI.ToY == 4) && targetPieceI == board.Empty {
 			scoreI += 20 // Центр
 		}
 		if depth < len(killerMoves) {
 			if moveI == killerMoves[depth][0] {
-				scoreI += 90
+				scoreI += 1000 // Killer moves имеют высокий приоритет
 			} else if moveI == killerMoves[depth][1] {
-				scoreI += 80
+				scoreI += 900
 			}
 		}
 		pieceIndexI := int(pieceI) + 6*int(colorI)
-		scoreI += history[pieceIndexI][moveI.ToX*8+moveI.ToY] / 100
-		scoreI += rand.Intn(5)
+		if pieceIndexI < 12 {
+			scoreI += history[pieceIndexI][moveI.ToX*8+moveI.ToY] / 100
+		}
 
 		scoreJ := 0
 		if targetPieceJ != board.Empty {
-			scoreJ += 10 * int(targetPieceJ)
+			targetValue := evaluation.PieceValues[targetPieceJ] // Теперь доступно
+			pieceValue := evaluation.PieceValues[pieceJ]
+			scoreJ += targetValue - pieceValue/10
 		}
 		if pieceJ == board.Pawn && (moveJ.ToX == 0 || moveJ.ToX == 7) {
-			scoreJ += 50
+			scoreJ += 900
 		}
 		if pieceJ == board.Knight || pieceJ == board.Bishop {
 			scoreJ += 20
@@ -265,14 +263,15 @@ func sortMoves(moves []move.Move, b board.Board, depth int) {
 		}
 		if depth < len(killerMoves) {
 			if moveJ == killerMoves[depth][0] {
-				scoreJ += 90
+				scoreJ += 1000
 			} else if moveJ == killerMoves[depth][1] {
-				scoreJ += 80
+				scoreJ += 900
 			}
 		}
 		pieceIndexJ := int(pieceJ) + 6*int(colorJ)
-		scoreJ += history[pieceIndexJ][moveJ.ToX*8+moveJ.ToY] / 100
-		scoreJ += rand.Intn(5)
+		if pieceIndexJ < 12 {
+			scoreJ += history[pieceIndexJ][moveJ.ToX*8+moveJ.ToY] / 100
+		}
 
 		return scoreI > scoreJ
 	})

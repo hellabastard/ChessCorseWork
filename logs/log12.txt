@@ -1,0 +1,4 @@
+2025/03/16 20:42:08 Fyne error:  Attempt to access current Fyne app when none is started
+2025/03/16 20:42:08   At: C:/Users/IWOFLEUR/go/pkg/mod/fyne.io/fyne/v2@v2.5.4/app.go:97
+2025/03/16 20:42:08 Fyne error:  Attempt to access current Fyne app when none is started
+2025/03/16 20:42:08   At: C:/Users/IWOFLEUR/go/pkg/mod/fyne.io/fyne/v2@v2.5.4/app.go:97

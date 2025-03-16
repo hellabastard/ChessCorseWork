@@ -8,12 +8,17 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
+
+	"github.com/faiface/beep/speaker"
 )
 
 var gameCounter int
 
 func init() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	log.Printf("GOMAXPROCS установлен на %d потоков", runtime.NumCPU())
 	// Создаем папку logs, если она не существует
 	err := os.MkdirAll("logs", 0755)
 	if err != nil {
@@ -25,7 +30,10 @@ func init() {
 	if err != nil {
 		log.Fatalf("Ошибка чтения файлов логов: %v", err)
 	}
-	gameCounter = len(files) // Номер следующего файла
+	gameCounter = len(files) + 1 // Номер следующего файла
+
+	// Инициализация звука
+	speaker.Init(44100, 44100/10) // Частота 44100 Гц, буфер на 100 мс
 }
 
 func main() {
