@@ -209,43 +209,46 @@ func (app *ChessApp) makeAIMove() {
 		return
 	}
 
-	app.aiThinking = true // ИИ начинает думать
+	app.aiThinking = true
 	app.infoLabel.SetText("ИИ думает...")
 	go func() {
 		bestMove := search.FindBestMove(app.currentBoard, 5, board.Black)
-		// Обновляем UI в основном потоке
-		app.window.Canvas().Content().(*fyne.Container).Objects[0].(*fyne.Container).Objects[0].(*widget.Label).SetText(func() string {
-			if bestMove.FromX == 0 && bestMove.FromY == 0 && bestMove.ToX == 0 && bestMove.ToY == 0 {
-				app.logMessage("ИИ не нашёл допустимых ходов")
-				if move.IsKingInCheck(app.currentBoard, board.Black) {
-					return "Мат! Белые победили."
-				}
-				return "Пат! Ничья."
+		// Обновляем UI через прямой доступ к infoLabel
+		var message string
+		if bestMove.FromX == 0 && bestMove.FromY == 0 && bestMove.ToX == 0 && bestMove.ToY == 0 {
+			app.logMessage("ИИ не нашёл допустимых ходов")
+			if move.IsKingInCheck(app.currentBoard, board.Black) {
+				message = "Мат! Белые победили."
+			} else {
+				message = "Пат! Ничья."
 			}
-
+		} else {
 			if err := move.MakeMove(&app.currentBoard, bestMove); err != nil {
 				app.logMessage(fmt.Sprintf("Ошибка при выполнении хода ИИ: %v", err))
-				return "Ошибка ИИ: " + err.Error()
-			}
+				message = "Ошибка ИИ: " + err.Error()
+			} else {
+				app.logMessage(fmt.Sprintf("Ход ИИ (чёрные): %s%d-%s%d", string('a'+bestMove.FromY), bestMove.FromX+1, string('a'+bestMove.ToY), bestMove.ToX+1))
+				app.playMoveSound()
+				app.moveCount++
+				positionHash := boardToString(app.currentBoard)
+				app.positions[positionHash]++
+				app.updateBoard()
 
-			app.logMessage(fmt.Sprintf("Ход ИИ (чёрные): %s%d-%s%d", string('a'+bestMove.FromY), bestMove.FromX+1, string('a'+bestMove.ToY), bestMove.ToX+1))
-			app.playMoveSound()
-			app.moveCount++
-			positionHash := boardToString(app.currentBoard)
-			app.positions[positionHash]++
-			app.updateBoard()
-
-			if move.IsKingInCheck(app.currentBoard, board.White) && app.isCheckmate(board.White) {
-				return "Мат! Чёрные победили."
-			} else if app.isCheckmate(board.White) {
-				return "Пат! Ничья."
-			} else if app.positions[positionHash] >= 3 {
-				return "Ничья по правилу трёхкратного повторения!"
+				if move.IsKingInCheck(app.currentBoard, board.White) && app.isCheckmate(board.White) {
+					message = "Мат! Чёрные победили."
+				} else if app.isCheckmate(board.White) {
+					message = "Пат! Ничья."
+				} else if app.positions[positionHash] >= 3 {
+					message = "Ничья по правилу трёхкратного повторения!"
+				} else {
+					message = "ИИ сделал ход. Ваш ход."
+				}
 			}
-			return "ИИ сделал ход. Ваш ход."
-		}())
-		app.aiThinking = false // ИИ закончил думать
-		app.gameOver = app.infoLabel.Text != "ИИ сделал ход. Ваш ход."
+		}
+		// Обновляем infoLabel напрямую
+		app.infoLabel.SetText(message)
+		app.aiThinking = false
+		app.gameOver = message != "ИИ сделал ход. Ваш ход."
 	}()
 }
 

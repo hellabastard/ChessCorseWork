@@ -2,7 +2,7 @@ package search
 
 import (
 	"chess-engine/board"
-	"chess-engine/evaluation" // Убедимся, что evaluation импортирован
+	"chess-engine/evaluation"
 	"chess-engine/move"
 	"fmt"
 	"math"
@@ -248,7 +248,7 @@ func sortMoves(moves []move.Move, b board.Board, depth int) {
 
 		scoreJ := 0
 		if targetPieceJ != board.Empty {
-			targetValue := evaluation.PieceValues[targetPieceJ] // Теперь доступно
+			targetValue := evaluation.PieceValues[targetPieceJ]
 			pieceValue := evaluation.PieceValues[pieceJ]
 			scoreJ += targetValue - pieceValue/10
 		}
