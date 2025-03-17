@@ -18,7 +18,6 @@ var gameCounter int
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	log.Printf("GOMAXPROCS установлен на %d потоков", runtime.NumCPU())
 	// Создаем папку logs, если она не существует
 	err := os.MkdirAll("logs", 0755)
 	if err != nil {

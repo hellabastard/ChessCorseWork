@@ -56,16 +56,10 @@ func NewChessApp() *ChessApp {
 		positions:    make(map[string]int),
 		gameOver:     false,
 		aiThinking:   false,
-		moveCount:    0,
+		moveCount:    0, // Начинаем с 0 ходов
 	}
 	app.positions[boardToString(app.currentBoard)] = 1
 
-	// Настраиваем logText
-	app.logText.Disable()
-	app.logText.MultiLine = true
-	app.logText.Wrapping = fyne.TextWrapWord
-	// Цвет текста напрямую не устанавливается, используем тёмный фон для контраста
-	// По умолчанию текст будет белым в большинстве тем Fyne
 	return app
 }
 
@@ -75,16 +69,12 @@ func (appl *ChessApp) Run() {
 
 	appl.grid = appl.createBoardGrid()
 	appl.infoLabel = widget.NewLabel("Ваш ход. Выберите фигуру.")
-
-	// Оборачиваем logText в контейнер с тёмным фоном
-	logContainer := container.NewMax(
-		canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}), // Тёмно-серый фон
-		appl.logText,
-	)
+	appl.logText.Disable()
+	appl.logText.MultiLine = true
 
 	content := container.NewBorder(
 		nil,
-		container.NewVBox(appl.infoLabel, logContainer),
+		container.NewVBox(appl.infoLabel, appl.logText),
 		nil,
 		nil,
 		appl.grid,
@@ -112,14 +102,10 @@ func boardToString(b board.Board) string {
 }
 
 func (app *ChessApp) playMoveSound() {
-	app.logMessage("Попытка воспроизвести звук хода")
 	go func() {
 		file, err := os.Open("moveSound.mp3")
 		if err != nil {
 			app.logMessage("Файл move.mp3 не найден, воспроизводим тон")
-			// streamer := beep.Take(500*time.Millisecond, beep.Tone(880, 44100))
-			// speaker.Play(streamer)
-			// time.Sleep(500 * time.Millisecond)
 			return
 		}
 		defer file.Close()
@@ -131,7 +117,6 @@ func (app *ChessApp) playMoveSound() {
 		}
 		defer streamer.Close()
 
-		app.logMessage("Воспроизведение move.mp3")
 		speaker.Play(beep.Seq(streamer, beep.Callback(func() {})))
 		time.Sleep(500 * time.Millisecond)
 	}()
@@ -191,7 +176,7 @@ func (app *ChessApp) handleCellClick(x, y int) {
 			app.logMessage(fmt.Sprintf("Ход игрока (белые): %s%d-%s%d", string('a'+app.selectedY), app.selectedX+1, string('a'+y), x+1))
 			app.playMoveSound()
 			app.selectedX, app.selectedY = -1, -1
-			app.moveCount++
+			app.moveCount++ // Увеличиваем счётчик ходов
 			positionHash := boardToString(app.currentBoard)
 			app.positions[positionHash]++
 			app.updateBoard()
@@ -224,10 +209,11 @@ func (app *ChessApp) makeAIMove() {
 		return
 	}
 
-	app.aiThinking = true
+	app.aiThinking = true // ИИ начинает думать
 	app.infoLabel.SetText("ИИ думает...")
 	go func() {
 		bestMove := search.FindBestMove(app.currentBoard, 5, board.Black)
+		// Обновляем UI в основном потоке
 		app.window.Canvas().Content().(*fyne.Container).Objects[0].(*fyne.Container).Objects[0].(*widget.Label).SetText(func() string {
 			if bestMove.FromX == 0 && bestMove.FromY == 0 && bestMove.ToX == 0 && bestMove.ToY == 0 {
 				app.logMessage("ИИ не нашёл допустимых ходов")
@@ -258,7 +244,7 @@ func (app *ChessApp) makeAIMove() {
 			}
 			return "ИИ сделал ход. Ваш ход."
 		}())
-		app.aiThinking = false
+		app.aiThinking = false // ИИ закончил думать
 		app.gameOver = app.infoLabel.Text != "ИИ сделал ход. Ваш ход."
 	}()
 }
@@ -395,7 +381,7 @@ func (app *ChessApp) isCheckmate(color board.Color) bool {
 
 func (app *ChessApp) updateBoard() {
 	app.grid = app.createBoardGrid()
-	app.window.SetContent(container.NewBorder(nil, container.NewVBox(app.infoLabel, container.NewMax(canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}), app.logText)), nil, nil, app.grid))
+	app.window.SetContent(container.NewBorder(nil, container.NewVBox(app.infoLabel, app.logText), nil, nil, app.grid))
 	app.window.Content().Refresh()
 }
 
