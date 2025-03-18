@@ -4,19 +4,67 @@ import (
 	"chess-engine/board"
 	"chess-engine/evaluation"
 	"chess-engine/move"
+	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"sort"
+	"sync"
 	"time"
 )
 
-var transpositionTable = make(map[string]SearchResult)
+type transpositionTableStruct struct {
+	sync.Mutex
+	data map[string]SearchResult
+}
+
+var transpositionTable = transpositionTableStruct{
+	data: make(map[string]SearchResult),
+}
 var killerMoves [32][2]move.Move
 var history [12][64]int
 
 type SearchResult struct {
-	BestMove move.Move
-	Score    int
+	BestMove move.Move `json:"best_move"`
+	Score    int       `json:"score"`
+}
+
+func LoadData() {
+	if data, err := os.ReadFile("transpositions.json"); err == nil {
+		if err := json.Unmarshal(data, &transpositionTable.data); err != nil {
+			fmt.Printf("Ошибка загрузки транспозиционной таблицы: %v\n", err)
+		} else {
+			fmt.Printf("Загружено %d позиций из транспозиционной таблицы\n", len(transpositionTable.data))
+		}
+	}
+
+	if data, err := os.ReadFile("killers.json"); err == nil {
+		if err := json.Unmarshal(data, &killerMoves); err != nil {
+			fmt.Printf("Ошибка загрузки killer moves: %v\n", err)
+		} else {
+			fmt.Println("Загружены killer moves")
+		}
+	}
+}
+
+func SaveData() {
+	transpositionTable.Lock()
+	defer transpositionTable.Unlock()
+	if data, err := json.MarshalIndent(transpositionTable.data, "", "  "); err == nil {
+		if err := os.WriteFile("transpositions.json", data, 0644); err != nil {
+			fmt.Printf("Ошибка сохранения транспозиционной таблицы: %v\n", err)
+		} else {
+			fmt.Printf("Сохранено %d позиций в транспозиционную таблицу\n", len(transpositionTable.data))
+		}
+	}
+
+	if data, err := json.MarshalIndent(killerMoves, "", "  "); err == nil {
+		if err := os.WriteFile("killers.json", data, 0644); err != nil {
+			fmt.Printf("Ошибка сохранения killer moves: %v\n", err)
+		} else {
+			fmt.Println("Сохранены killer moves")
+		}
+	}
 }
 
 func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer bool, deadline time.Time) SearchResult {
@@ -25,9 +73,12 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	}
 
 	hash := boardToString(b)
-	if result, ok := transpositionTable[hash]; ok && depth <= result.Score {
+	transpositionTable.Lock()
+	if result, ok := transpositionTable.data[hash]; ok && depth <= result.Score {
+		transpositionTable.Unlock()
 		return result
 	}
+	transpositionTable.Unlock()
 
 	if depth == 0 {
 		return SearchResult{Score: QuiescenceSearch(b, alpha, beta, maximizingPlayer, 4, deadline)}
@@ -37,15 +88,22 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	if maximizingPlayer {
 		color = board.White
 	}
-	if depth > 2 && !move.IsKingInCheck(b, color) {
-		nullBoard := b
-		nullResult := Minimax(nullBoard, depth-3, alpha, beta, !maximizingPlayer, deadline)
-		if maximizingPlayer && nullResult.Score >= beta {
-			return SearchResult{Score: beta}
-		} else if !maximizingPlayer && nullResult.Score <= alpha {
-			return SearchResult{Score: alpha}
+
+	moves := move.GenerateMoves(b, color)
+
+	if len(moves) == 0 {
+		if maximizingPlayer && move.IsKingInCheck(b, board.White) {
+			fmt.Println("Мат белым")
+			return SearchResult{Score: -1000000}
+		} else if !maximizingPlayer && move.IsKingInCheck(b, board.Black) {
+			fmt.Println("Мат чёрным")
+			return SearchResult{Score: 1000000}
 		}
+		fmt.Println("Пат или нет ходов")
+		return SearchResult{Score: evaluation.Evaluate(b)}
 	}
+
+	sortMoves(moves, b, depth)
 
 	var bestMove move.Move
 	var bestScore int
@@ -55,70 +113,45 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 		bestScore = math.MaxInt
 	}
 
-	moves := move.GenerateMoves(b, color)
-	if len(moves) == 0 {
-		if maximizingPlayer && move.IsKingInCheck(b, board.White) {
-			return SearchResult{Score: -1000000}
-		} else if !maximizingPlayer && move.IsKingInCheck(b, board.Black) {
-			return SearchResult{Score: 1000000}
-		}
-		return SearchResult{Score: evaluation.Evaluate(b)}
-	}
-
-	sortMoves(moves, b, depth)
-
+	// Только последовательное выполнение
 	for _, m := range moves {
-		newBoard := b
+		newBoard := b.Copy()
 		if err := move.MakeMove(&newBoard, m); err != nil {
+			fmt.Printf("Ошибка в MakeMove для хода %v: %v\n", m, err)
 			continue
 		}
-
-		result := Minimax(newBoard, depth-1, alpha, beta, !maximizingPlayer, deadline)
+		res := Minimax(newBoard, depth-1, alpha, beta, !maximizingPlayer, deadline)
 		if maximizingPlayer {
-			if result.Score > bestScore {
-				bestScore = result.Score
+			if res.Score > bestScore {
+				bestScore = res.Score
 				bestMove = m
 			}
 			alpha = max(alpha, bestScore)
 			if beta <= alpha {
-				if depth < len(killerMoves) {
-					killerMoves[depth][1] = killerMoves[depth][0]
-					killerMoves[depth][0] = m
-				}
-				piece, _, _ := b.GetPiece(m.FromX, m.FromY)
-				pieceIndex := int(piece) + 6*int(color)
-				if pieceIndex < 12 {
-					history[pieceIndex][m.ToX*8+m.ToY] += depth * depth
-				}
+				updateKillerAndHistory(b, m, depth, color)
 				break
 			}
 		} else {
-			if result.Score < bestScore {
-				bestScore = result.Score
+			if res.Score < bestScore {
+				bestScore = res.Score
 				bestMove = m
 			}
 			beta = min(beta, bestScore)
 			if beta <= alpha {
-				if depth < len(killerMoves) {
-					killerMoves[depth][1] = killerMoves[depth][0]
-					killerMoves[depth][0] = m
-				}
-				piece, _, _ := b.GetPiece(m.FromX, m.FromY)
-				pieceIndex := int(piece) + 6*int(color)
-				if pieceIndex < 12 {
-					history[pieceIndex][m.ToX*8+m.ToY] += depth * depth
-				}
+				updateKillerAndHistory(b, m, depth, color)
 				break
 			}
 		}
 	}
 
-	result := SearchResult{
+	res := SearchResult{
 		BestMove: bestMove,
 		Score:    bestScore,
 	}
-	transpositionTable[hash] = result
-	return result
+	transpositionTable.Lock()
+	transpositionTable.data[hash] = res
+	transpositionTable.Unlock()
+	return res
 }
 
 func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool, maxDepth int, deadline time.Time) int {
@@ -150,7 +183,7 @@ func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool,
 	for _, m := range moves {
 		targetPiece, _, _ := b.GetPiece(m.ToX, m.ToY)
 		piece, _, _ := b.GetPiece(m.FromX, m.FromY)
-		newBoard := b
+		newBoard := b.Copy()
 		if err := move.MakeMove(&newBoard, m); err != nil {
 			continue
 		}
@@ -181,11 +214,11 @@ func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool,
 func FindBestMove(b board.Board, depth int, boardColor board.Color) move.Move {
 	maximizingPlayer := (boardColor == board.White)
 	start := time.Now()
-	timeLimit := 10 * time.Second // Установлено 10 секунд
+	timeLimit := 10 * time.Second
 	deadline := start.Add(timeLimit)
 
-	result := Minimax(b, depth, math.MinInt, math.MaxInt, maximizingPlayer, deadline)
-	return result.BestMove
+	res := Minimax(b, depth, math.MinInt, math.MaxInt, maximizingPlayer, deadline)
+	return res.BestMove
 }
 
 func max(a, b int) int {
@@ -218,25 +251,24 @@ func sortMoves(moves []move.Move, b board.Board, depth int) {
 		targetPieceI, _, _ := b.GetPiece(moveI.ToX, moveI.ToY)
 		targetPieceJ, _, _ := b.GetPiece(moveJ.ToX, moveJ.ToY)
 
-		// MVV-LVA: приоритет взятий более ценных фигур менее ценными
 		scoreI := 0
 		if targetPieceI != board.Empty {
-			targetValue := evaluation.PieceValues[targetPieceI] // Теперь доступно
+			targetValue := evaluation.PieceValues[targetPieceI]
 			pieceValue := evaluation.PieceValues[pieceI]
-			scoreI += targetValue - pieceValue/10 // Бонус за взятие ценной фигуры
+			scoreI += targetValue - pieceValue/10
 		}
 		if pieceI == board.Pawn && (moveI.ToX == 0 || moveI.ToX == 7) {
-			scoreI += 900 // Превращение пешки
+			scoreI += 900
 		}
 		if pieceI == board.Knight || pieceI == board.Bishop {
-			scoreI += 20 // Развитие лёгких фигур
+			scoreI += 20
 		}
 		if pieceI == board.Pawn && (moveI.ToY == 3 || moveI.ToY == 4) && targetPieceI == board.Empty {
-			scoreI += 20 // Центр
+			scoreI += 20
 		}
 		if depth < len(killerMoves) {
 			if moveI == killerMoves[depth][0] {
-				scoreI += 1000 // Killer moves имеют высокий приоритет
+				scoreI += 1000
 			} else if moveI == killerMoves[depth][1] {
 				scoreI += 900
 			}
@@ -286,4 +318,16 @@ func boardToString(b board.Board) string {
 		}
 	}
 	return s
+}
+
+func updateKillerAndHistory(b board.Board, m move.Move, depth int, color board.Color) {
+	if depth < len(killerMoves) {
+		killerMoves[depth][1] = killerMoves[depth][0]
+		killerMoves[depth][0] = m
+	}
+	piece, _, _ := b.GetPiece(m.FromX, m.FromY)
+	pieceIndex := int(piece) + 6*int(color)
+	if pieceIndex < 12 {
+		history[pieceIndex][m.ToX*8+m.ToY] += depth * depth
+	}
 }

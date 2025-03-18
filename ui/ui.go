@@ -48,6 +48,9 @@ type ChessApp struct {
 }
 
 func NewChessApp() *ChessApp {
+	// Загружаем данные ИИ при создании приложения
+	search.LoadData()
+
 	app := &ChessApp{
 		currentBoard: board.NewBoard(),
 		selectedX:    -1,
@@ -56,10 +59,9 @@ func NewChessApp() *ChessApp {
 		positions:    make(map[string]int),
 		gameOver:     false,
 		aiThinking:   false,
-		moveCount:    0, // Начинаем с 0 ходов
+		moveCount:    0,
 	}
 	app.positions[boardToString(app.currentBoard)] = 1
-
 	return app
 }
 
@@ -69,18 +71,34 @@ func (appl *ChessApp) Run() {
 
 	appl.grid = appl.createBoardGrid()
 	appl.infoLabel = widget.NewLabel("Ваш ход. Выберите фигуру.")
-	appl.logText.Disable()
+
+	// Настраиваем logText
 	appl.logText.MultiLine = true
+	appl.logText.Wrapping = fyne.TextWrapWord
+	appl.logText.Disable() // Используем Disable вместо SetReadOnly для Fyne 2.5.4
+
+	// Оборачиваем logText в контейнер с тёмным фоном
+	logContainer := container.NewMax(
+		canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}),
+		appl.logText,
+	)
 
 	content := container.NewBorder(
 		nil,
-		container.NewVBox(appl.infoLabel, appl.logText),
+		container.NewVBox(appl.infoLabel, logContainer),
 		nil,
 		nil,
 		appl.grid,
 	)
 	appl.window.SetContent(content)
 	appl.window.Resize(fyne.NewSize(cellSize*8, cellSize*8+100))
+
+	// Сохраняем данные ИИ при закрытии окна
+	appl.window.SetCloseIntercept(func() {
+		search.SaveData()
+		appl.window.Close()
+	})
+
 	appl.window.Show()
 	myApp.Run()
 }
@@ -102,10 +120,11 @@ func boardToString(b board.Board) string {
 }
 
 func (app *ChessApp) playMoveSound() {
+	app.logMessage("Попытка воспроизвести звук хода")
 	go func() {
 		file, err := os.Open("moveSound.mp3")
 		if err != nil {
-			app.logMessage("Файл move.mp3 не найден, воспроизводим тон")
+			app.logMessage("Файл moveSound.mp3 не найден, воспроизводим тон")
 			return
 		}
 		defer file.Close()
@@ -123,7 +142,6 @@ func (app *ChessApp) playMoveSound() {
 }
 
 func (app *ChessApp) handleCellClick(x, y int) {
-	// Блокируем ход игрока, если ИИ думает (кроме первого хода)
 	if app.aiThinking && app.moveCount > 0 {
 		app.infoLabel.SetText("Подождите, ИИ думает...")
 		return
@@ -176,7 +194,7 @@ func (app *ChessApp) handleCellClick(x, y int) {
 			app.logMessage(fmt.Sprintf("Ход игрока (белые): %s%d-%s%d", string('a'+app.selectedY), app.selectedX+1, string('a'+y), x+1))
 			app.playMoveSound()
 			app.selectedX, app.selectedY = -1, -1
-			app.moveCount++ // Увеличиваем счётчик ходов
+			app.moveCount++
 			positionHash := boardToString(app.currentBoard)
 			app.positions[positionHash]++
 			app.updateBoard()
@@ -185,16 +203,19 @@ func (app *ChessApp) handleCellClick(x, y int) {
 				app.infoLabel.SetText("Мат! Белые победили.")
 				app.logMessage("Игра завершена: мат чёрным. Победитель: Белые")
 				app.gameOver = true
+				search.SaveData()
 				return
 			} else if app.isCheckmate(board.Black) {
 				app.infoLabel.SetText("Пат! Ничья.")
 				app.logMessage("Игра завершена: пат для чёрных")
 				app.gameOver = true
+				search.SaveData()
 				return
 			} else if app.positions[positionHash] >= 3 {
 				app.infoLabel.SetText("Ничья по правилу трёхкратного повторения!")
 				app.logMessage("Игра завершена: ничья по правилу трёхкратного повторения")
 				app.gameOver = true
+				search.SaveData()
 				return
 			}
 
@@ -213,7 +234,6 @@ func (app *ChessApp) makeAIMove() {
 	app.infoLabel.SetText("ИИ думает...")
 	go func() {
 		bestMove := search.FindBestMove(app.currentBoard, 5, board.Black)
-		// Обновляем UI через прямой доступ к infoLabel
 		var message string
 		if bestMove.FromX == 0 && bestMove.FromY == 0 && bestMove.ToX == 0 && bestMove.ToY == 0 {
 			app.logMessage("ИИ не нашёл допустимых ходов")
@@ -245,10 +265,12 @@ func (app *ChessApp) makeAIMove() {
 				}
 			}
 		}
-		// Обновляем infoLabel напрямую
 		app.infoLabel.SetText(message)
 		app.aiThinking = false
 		app.gameOver = message != "ИИ сделал ход. Ваш ход."
+		if app.gameOver {
+			search.SaveData()
+		}
 	}()
 }
 
@@ -384,7 +406,7 @@ func (app *ChessApp) isCheckmate(color board.Color) bool {
 
 func (app *ChessApp) updateBoard() {
 	app.grid = app.createBoardGrid()
-	app.window.SetContent(container.NewBorder(nil, container.NewVBox(app.infoLabel, app.logText), nil, nil, app.grid))
+	app.window.SetContent(container.NewBorder(nil, container.NewVBox(app.infoLabel, container.NewMax(canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}), app.logText)), nil, nil, app.grid))
 	app.window.Content().Refresh()
 }
 

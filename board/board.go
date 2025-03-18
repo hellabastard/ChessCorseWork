@@ -11,8 +11,6 @@ func NewBoard() Board {
 
 	// Расстановка белых фигур
 	b[0] = [8]Square{
-		// {King, White}, {King, White}, {King, White}, {King, White},
-		// {King, White}, {King, White}, {King, White}, {King, White},
 		{Rook, White}, {Knight, White}, {Bishop, White}, {Queen, White},
 		{King, White}, {Bishop, White}, {Knight, White}, {Rook, White},
 	}
@@ -22,15 +20,11 @@ func NewBoard() Board {
 
 	// Расстановка черных фигур
 	b[7] = [8]Square{
-		// {King, Black}, {King, Black}, {King, Black}, {King, Black},
-		// {King, Black}, {King, Black}, {King, Black}, {King, Black},
 		{Rook, Black}, {Knight, Black}, {Bishop, Black}, {Queen, Black},
 		{King, Black}, {Bishop, Black}, {Knight, Black}, {Rook, Black},
-		// {Empty, Black}, {Empty, Black},
 	}
 	for i := 0; i < 8; i++ {
 		b[6][i] = Square{Pawn, Black}
-		// b[6][i] = Square{Empty, Black}
 	}
 
 	// Остальные клетки пустые
@@ -63,4 +57,15 @@ func (b Board) IsEmpty(x, y int) bool {
 		return false
 	}
 	return b[x][y].Piece == Empty
+}
+
+// Copy создаёт глубокую копию доски
+func (b Board) Copy() Board {
+	var newBoard Board
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			newBoard[i][j] = b[i][j]
+		}
+	}
+	return newBoard
 }
