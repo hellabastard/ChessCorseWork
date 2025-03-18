@@ -93,10 +93,8 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 
 	if len(moves) == 0 {
 		if maximizingPlayer && move.IsKingInCheck(b, board.White) {
-			fmt.Println("Мат белым")
 			return SearchResult{Score: -1000000}
 		} else if !maximizingPlayer && move.IsKingInCheck(b, board.Black) {
-			fmt.Println("Мат чёрным")
 			return SearchResult{Score: 1000000}
 		}
 		fmt.Println("Пат или нет ходов")

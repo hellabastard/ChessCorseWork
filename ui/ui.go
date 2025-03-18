@@ -120,7 +120,6 @@ func boardToString(b board.Board) string {
 }
 
 func (app *ChessApp) playMoveSound() {
-	app.logMessage("Попытка воспроизвести звук хода")
 	go func() {
 		file, err := os.Open("moveSound.mp3")
 		if err != nil {
