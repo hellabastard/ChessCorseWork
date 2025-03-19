@@ -29,6 +29,12 @@ type SearchResult struct {
 	Score    int       `json:"score"`
 }
 
+// SearchStats для отслеживания показателей
+type SearchStats struct {
+	NodesEvaluated int
+	SearchTime     time.Duration
+}
+
 func LoadData() {
 	if data, err := os.ReadFile("transpositions.json"); err == nil {
 		if err := json.Unmarshal(data, &transpositionTable.data); err != nil {
@@ -67,8 +73,9 @@ func SaveData() {
 	}
 }
 
-func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer bool, deadline time.Time) SearchResult {
+func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer bool, deadline time.Time, stats *SearchStats) SearchResult {
 	if time.Now().After(deadline) {
+		stats.NodesEvaluated++
 		return SearchResult{Score: evaluation.Evaluate(b)}
 	}
 
@@ -81,7 +88,7 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	transpositionTable.Unlock()
 
 	if depth == 0 {
-		return SearchResult{Score: QuiescenceSearch(b, alpha, beta, maximizingPlayer, 4, deadline)}
+		return SearchResult{Score: QuiescenceSearch(b, alpha, beta, maximizingPlayer, 4, deadline, stats)}
 	}
 
 	color := board.Black
@@ -90,7 +97,6 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	}
 
 	moves := move.GenerateMoves(b, color)
-
 	if len(moves) == 0 {
 		if maximizingPlayer && move.IsKingInCheck(b, board.White) {
 			return SearchResult{Score: -1000000}
@@ -98,6 +104,7 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 			return SearchResult{Score: 1000000}
 		}
 		fmt.Println("Пат или нет ходов")
+		stats.NodesEvaluated++
 		return SearchResult{Score: evaluation.Evaluate(b)}
 	}
 
@@ -111,14 +118,14 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 		bestScore = math.MaxInt
 	}
 
-	// Только последовательное выполнение
 	for _, m := range moves {
 		newBoard := b.Copy()
 		if err := move.MakeMove(&newBoard, m); err != nil {
 			fmt.Printf("Ошибка в MakeMove для хода %v: %v\n", m, err)
 			continue
 		}
-		res := Minimax(newBoard, depth-1, alpha, beta, !maximizingPlayer, deadline)
+		res := Minimax(newBoard, depth-1, alpha, beta, !maximizingPlayer, deadline, stats)
+		stats.NodesEvaluated++
 		if maximizingPlayer {
 			if res.Score > bestScore {
 				bestScore = res.Score
@@ -152,12 +159,14 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	return res
 }
 
-func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool, maxDepth int, deadline time.Time) int {
+func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool, maxDepth int, deadline time.Time, stats *SearchStats) int {
 	if time.Now().After(deadline) || maxDepth <= 0 {
+		stats.NodesEvaluated++
 		return evaluation.Evaluate(b)
 	}
 
 	standPat := evaluation.Evaluate(b)
+	stats.NodesEvaluated++
 	if maximizingPlayer {
 		if standPat >= beta {
 			return beta
@@ -188,7 +197,7 @@ func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool,
 
 		if targetPiece != board.Empty || move.IsKingInCheck(newBoard, board.Black) || move.IsKingInCheck(newBoard, board.White) ||
 			(piece == board.Pawn && (m.ToX == 0 || m.ToX == 7)) {
-			score := QuiescenceSearch(newBoard, alpha, beta, !maximizingPlayer, maxDepth-1, deadline)
+			score := QuiescenceSearch(newBoard, alpha, beta, !maximizingPlayer, maxDepth-1, deadline, stats)
 			if maximizingPlayer {
 				alpha = max(alpha, score)
 				if alpha >= beta {
@@ -209,14 +218,16 @@ func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool,
 	return beta
 }
 
-func FindBestMove(b board.Board, depth int, boardColor board.Color) move.Move {
+func FindBestMove(b board.Board, depth int, boardColor board.Color) (move.Move, SearchStats) {
 	maximizingPlayer := (boardColor == board.White)
 	start := time.Now()
 	timeLimit := 10 * time.Second
 	deadline := start.Add(timeLimit)
 
-	res := Minimax(b, depth, math.MinInt, math.MaxInt, maximizingPlayer, deadline)
-	return res.BestMove
+	stats := SearchStats{}
+	res := Minimax(b, depth, math.MinInt, math.MaxInt, maximizingPlayer, deadline, &stats)
+	stats.SearchTime = time.Since(start)
+	return res.BestMove, stats
 }
 
 func max(a, b int) int {
