@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"sort"
 	"sync"
@@ -25,8 +26,13 @@ var killerMoves [32][2]move.Move
 var history [12][64]int
 
 type SearchResult struct {
-	BestMove move.Move `json:"best_move"`
-	Score    int       `json:"score"`
+	BestMoves []move.Move `json:"best_moves"`
+	Score     int         `json:"score"`
+}
+
+type SearchStats struct {
+	NodesEvaluated int
+	SearchTime     time.Duration
 }
 
 func LoadData() {
@@ -67,8 +73,9 @@ func SaveData() {
 	}
 }
 
-func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer bool, deadline time.Time) SearchResult {
+func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer bool, deadline time.Time, stats *SearchStats) SearchResult {
 	if time.Now().After(deadline) {
+		stats.NodesEvaluated++
 		return SearchResult{Score: evaluation.Evaluate(b)}
 	}
 
@@ -81,7 +88,7 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	transpositionTable.Unlock()
 
 	if depth == 0 {
-		return SearchResult{Score: QuiescenceSearch(b, alpha, beta, maximizingPlayer, 4, deadline)}
+		return SearchResult{Score: QuiescenceSearch(b, alpha, beta, maximizingPlayer, 4, deadline, stats)}
 	}
 
 	color := board.Black
@@ -90,20 +97,20 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	}
 
 	moves := move.GenerateMoves(b, color)
-
 	if len(moves) == 0 {
 		if maximizingPlayer && move.IsKingInCheck(b, board.White) {
 			return SearchResult{Score: -1000000}
 		} else if !maximizingPlayer && move.IsKingInCheck(b, board.Black) {
 			return SearchResult{Score: 1000000}
 		}
-		fmt.Println("Пат или нет ходов")
+		fmt.Println("Пат или нет ходов для", color)
+		stats.NodesEvaluated++
 		return SearchResult{Score: evaluation.Evaluate(b)}
 	}
 
 	sortMoves(moves, b, depth)
 
-	var bestMove move.Move
+	var bestMoves []move.Move
 	var bestScore int
 	if maximizingPlayer {
 		bestScore = math.MinInt
@@ -111,18 +118,20 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 		bestScore = math.MaxInt
 	}
 
-	// Только последовательное выполнение
 	for _, m := range moves {
 		newBoard := b.Copy()
 		if err := move.MakeMove(&newBoard, m); err != nil {
 			fmt.Printf("Ошибка в MakeMove для хода %v: %v\n", m, err)
 			continue
 		}
-		res := Minimax(newBoard, depth-1, alpha, beta, !maximizingPlayer, deadline)
+		res := Minimax(newBoard, depth-1, alpha, beta, !maximizingPlayer, deadline, stats)
+		stats.NodesEvaluated++
 		if maximizingPlayer {
 			if res.Score > bestScore {
 				bestScore = res.Score
-				bestMove = m
+				bestMoves = []move.Move{m}
+			} else if res.Score == bestScore {
+				bestMoves = append(bestMoves, m)
 			}
 			alpha = max(alpha, bestScore)
 			if beta <= alpha {
@@ -132,7 +141,9 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 		} else {
 			if res.Score < bestScore {
 				bestScore = res.Score
-				bestMove = m
+				bestMoves = []move.Move{m}
+			} else if res.Score == bestScore {
+				bestMoves = append(bestMoves, m)
 			}
 			beta = min(beta, bestScore)
 			if beta <= alpha {
@@ -142,9 +153,14 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 		}
 	}
 
+	if len(bestMoves) == 0 {
+		fmt.Println("Не удалось найти лучшие ходы для", color)
+		return SearchResult{Score: evaluation.Evaluate(b)}
+	}
+
 	res := SearchResult{
-		BestMove: bestMove,
-		Score:    bestScore,
+		BestMoves: bestMoves,
+		Score:     bestScore,
 	}
 	transpositionTable.Lock()
 	transpositionTable.data[hash] = res
@@ -152,12 +168,14 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	return res
 }
 
-func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool, maxDepth int, deadline time.Time) int {
+func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool, maxDepth int, deadline time.Time, stats *SearchStats) int {
 	if time.Now().After(deadline) || maxDepth <= 0 {
+		stats.NodesEvaluated++
 		return evaluation.Evaluate(b)
 	}
 
 	standPat := evaluation.Evaluate(b)
+	stats.NodesEvaluated++
 	if maximizingPlayer {
 		if standPat >= beta {
 			return beta
@@ -188,7 +206,7 @@ func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool,
 
 		if targetPiece != board.Empty || move.IsKingInCheck(newBoard, board.Black) || move.IsKingInCheck(newBoard, board.White) ||
 			(piece == board.Pawn && (m.ToX == 0 || m.ToX == 7)) {
-			score := QuiescenceSearch(newBoard, alpha, beta, !maximizingPlayer, maxDepth-1, deadline)
+			score := QuiescenceSearch(newBoard, alpha, beta, !maximizingPlayer, maxDepth-1, deadline, stats)
 			if maximizingPlayer {
 				alpha = max(alpha, score)
 				if alpha >= beta {
@@ -209,14 +227,50 @@ func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool,
 	return beta
 }
 
-func FindBestMove(b board.Board, depth int, boardColor board.Color) move.Move {
+func FindBestMove(b board.Board, depth int, boardColor board.Color) (move.Move, SearchStats) {
+	rand.Seed(time.Now().UnixNano())
 	maximizingPlayer := (boardColor == board.White)
 	start := time.Now()
 	timeLimit := 10 * time.Second
 	deadline := start.Add(timeLimit)
 
-	res := Minimax(b, depth, math.MinInt, math.MaxInt, maximizingPlayer, deadline)
-	return res.BestMove
+	stats := SearchStats{}
+	res := Minimax(b, depth, math.MinInt, math.MaxInt, maximizingPlayer, deadline, &stats)
+	stats.SearchTime = time.Since(start)
+
+	if len(res.BestMoves) == 0 {
+		fmt.Println("Minimax вернул пустой список лучших ходов для", boardColor)
+		moves := move.GenerateMoves(b, boardColor)
+		if len(moves) == 0 {
+			fmt.Println("GenerateMoves вернул пустой список для", boardColor)
+			return move.Move{}, stats
+		}
+		return moves[0], stats // Возвращаем первый доступный ход
+	}
+
+	// Ограничиваем рандомизацию топ-3 ходами (или всеми, если их меньше)
+	maxChoices := 3
+	if len(res.BestMoves) < maxChoices {
+		maxChoices = len(res.BestMoves)
+	}
+	// Сортируем ходы по эвристике для дебюта
+	sort.Slice(res.BestMoves, func(i, j int) bool {
+		return moveHeuristic(res.BestMoves[i]) > moveHeuristic(res.BestMoves[j])
+	})
+	// Выбираем случайный из топ-N
+	return res.BestMoves[rand.Intn(maxChoices)], stats
+}
+
+// moveHeuristic добавляет приоритет центральным ходам в дебюте
+func moveHeuristic(m move.Move) int {
+	score := 0
+	// Предпочтение центральным клеткам (d4, d5, e4, e5)
+	centerSquares := map[int]bool{27: true, 28: true, 35: true, 36: true} // e4, e5, d4, d5
+	toSquare := m.ToX*8 + m.ToY
+	if centerSquares[toSquare] {
+		score += 10
+	}
+	return score
 }
 
 func max(a, b int) int {
