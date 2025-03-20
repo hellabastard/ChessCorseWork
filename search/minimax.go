@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"sort"
 	"sync"
@@ -25,8 +26,8 @@ var killerMoves [32][2]move.Move
 var history [12][64]int
 
 type SearchResult struct {
-	BestMove move.Move `json:"best_move"`
-	Score    int       `json:"score"`
+	BestMoves []move.Move `json:"best_moves"` // Список лучших ходов вместо одного
+	Score     int         `json:"score"`
 }
 
 // SearchStats для отслеживания показателей
@@ -110,7 +111,7 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 
 	sortMoves(moves, b, depth)
 
-	var bestMove move.Move
+	var bestMoves []move.Move
 	var bestScore int
 	if maximizingPlayer {
 		bestScore = math.MinInt
@@ -129,7 +130,9 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 		if maximizingPlayer {
 			if res.Score > bestScore {
 				bestScore = res.Score
-				bestMove = m
+				bestMoves = []move.Move{m}
+			} else if res.Score == bestScore {
+				bestMoves = append(bestMoves, m)
 			}
 			alpha = max(alpha, bestScore)
 			if beta <= alpha {
@@ -139,7 +142,9 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 		} else {
 			if res.Score < bestScore {
 				bestScore = res.Score
-				bestMove = m
+				bestMoves = []move.Move{m}
+			} else if res.Score == bestScore {
+				bestMoves = append(bestMoves, m)
 			}
 			beta = min(beta, bestScore)
 			if beta <= alpha {
@@ -150,8 +155,8 @@ func Minimax(b board.Board, depth int, alpha int, beta int, maximizingPlayer boo
 	}
 
 	res := SearchResult{
-		BestMove: bestMove,
-		Score:    bestScore,
+		BestMoves: bestMoves,
+		Score:     bestScore,
 	}
 	transpositionTable.Lock()
 	transpositionTable.data[hash] = res
@@ -219,15 +224,22 @@ func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool,
 }
 
 func FindBestMove(b board.Board, depth int, boardColor board.Color) (move.Move, SearchStats) {
+	rand.Seed(time.Now().UnixNano()) // Инициализация случайности
 	maximizingPlayer := (boardColor == board.White)
 	start := time.Now()
-	timeLimit := 10 * time.Second
+	timeLimit := 5 * time.Second // Уменьшил до 5 секунд для соответствия ui.go
 	deadline := start.Add(timeLimit)
 
 	stats := SearchStats{}
 	res := Minimax(b, depth, math.MinInt, math.MaxInt, maximizingPlayer, deadline, &stats)
 	stats.SearchTime = time.Since(start)
-	return res.BestMove, stats
+
+	if len(res.BestMoves) == 0 {
+		return move.Move{}, stats // Нет ходов
+	}
+	// Выбираем случайный ход из лучших
+	bestMove := res.BestMoves[rand.Intn(len(res.BestMoves))]
+	return bestMove, stats
 }
 
 func max(a, b int) int {

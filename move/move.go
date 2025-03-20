@@ -6,9 +6,12 @@ import (
 )
 
 type Move struct {
-	FromX, FromY int
-	ToX, ToY     int
-	PromoteTo    board.Piece // Фигура, в которую превращается пешка (0 если нет превращения)
+	FromX, FromY  int
+	ToX, ToY      int
+	PromoteTo     board.Piece // Фигура, в которую превращается пешка (0 если нет превращения)
+	Captured      board.Piece // Взятная фигура (для восстановления при откате)
+	CapturedColor board.Color // Цвет взятной фигуры
+	IsCastling    bool        // Флаг рокировки
 }
 
 // MakeMove выполняет ход на доске
@@ -23,12 +26,13 @@ func MakeMove(b *board.Board, m Move) error {
 		return errors.New("на начальной клетке нет фигуры")
 	}
 
-	// Создаем копию доски и проверяем, не приводит ли ход к шаху
+	// Создаем копию доски и проверяем ход
 	newBoard := *b
+	// capturedPiece, capturedColor, _ := newBoard.GetPiece(m.ToX, m.ToY)
 	newBoard.SetPiece(m.ToX, m.ToY, piece, color)
 	newBoard.SetPiece(m.FromX, m.FromY, board.Empty, color)
 
-	// Превращение пешки в ферзя
+	// Превращение пешки
 	if piece == board.Pawn {
 		if color == board.White && m.ToX == 7 { // Белая пешка на 8-й горизонтали
 			if m.PromoteTo != 0 {
@@ -45,7 +49,7 @@ func MakeMove(b *board.Board, m Move) error {
 		}
 	}
 
-	// Если это рокировка, перемещаем ладью
+	// Рокировка
 	if piece == board.King && abs(m.FromY-m.ToY) == 2 {
 		if m.ToY > m.FromY {
 			// Короткая рокировка (O-O)
@@ -63,9 +67,45 @@ func MakeMove(b *board.Board, m Move) error {
 		return errors.New("ход подвергает короля шаху")
 	}
 
-	// Если все в порядке, применяем ход
+	// Если все в порядке, применяем ход и сохраняем информацию о взятии
 	*b = newBoard
 	return nil
+}
+
+// UndoMove откатывает ход на доске
+func UndoMove(b *board.Board, m Move) {
+	piece, color, _ := b.GetPiece(m.ToX, m.ToY)
+	if piece == board.Empty {
+		return // Ничего не делаем, если клетка пуста (ошибка не предполагается)
+	}
+
+	// Восстанавливаем начальную позицию фигуры
+	b.SetPiece(m.FromX, m.FromY, piece, color)
+
+	// Если было превращение пешки, возвращаем пешку
+	if m.PromoteTo != 0 || (piece == board.Queen && ((color == board.White && m.ToX == 7) || (color == board.Black && m.ToX == 0))) {
+		b.SetPiece(m.FromX, m.FromY, board.Pawn, color)
+	}
+
+	// Восстанавливаем захваченную фигуру (если была)
+	if m.Captured != 0 {
+		b.SetPiece(m.ToX, m.ToY, m.Captured, m.CapturedColor)
+	} else {
+		b.SetPiece(m.ToX, m.ToY, board.Empty, color)
+	}
+
+	// Откат рокировки
+	if m.IsCastling {
+		if m.ToY > m.FromY {
+			// Откат короткой рокировки (O-O)
+			b.SetPiece(m.FromX, m.FromY+1, board.Empty, color)
+			b.SetPiece(m.FromX, m.FromY+3, board.Rook, color)
+		} else {
+			// Откат длинной рокировки (O-O-O)
+			b.SetPiece(m.FromX, m.FromY-1, board.Empty, color)
+			b.SetPiece(m.FromX, m.FromY-4, board.Rook, color)
+		}
+	}
 }
 
 // IsKingInCheck проверяет, находится ли король под шахом

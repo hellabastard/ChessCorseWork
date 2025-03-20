@@ -9,7 +9,6 @@ import (
 	"image/color"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -42,8 +41,6 @@ type ChessApp struct {
 	window               fyne.Window
 	grid                 *fyne.Container
 	infoLabel            *widget.Label
-	logText              *widget.Entry
-	commandEntry         *widget.Entry
 	positions            map[string]int
 	gameOver             bool
 	aiThinking           bool
@@ -51,6 +48,8 @@ type ChessApp struct {
 	aiColor              board.Color
 	lastStats            search.SearchStats
 	moveHistory          []move.Move
+	paused               bool
+	aiDepth              int
 }
 
 func NewChessApp() *ChessApp {
@@ -59,14 +58,14 @@ func NewChessApp() *ChessApp {
 		currentBoard: board.NewBoard(),
 		selectedX:    -1,
 		selectedY:    -1,
-		logText:      widget.NewEntry(),
-		commandEntry: widget.NewEntry(),
 		positions:    make(map[string]int),
 		gameOver:     false,
 		aiThinking:   false,
 		moveCount:    0,
 		aiColor:      board.Black,
 		moveHistory:  make([]move.Move, 0),
+		paused:       false,
+		aiDepth:      4, // Глубина по умолчанию
 	}
 	app.positions[boardToString(app.currentBoard)] = 1
 	return app
@@ -77,34 +76,16 @@ func (appl *ChessApp) Run() {
 	appl.window = myApp.NewWindow("Шахматы")
 
 	appl.grid = appl.createBoardGrid()
-	appl.infoLabel = widget.NewLabel("Ваш ход. Выберите фигуру или введите команду.")
-	appl.logText.MultiLine = true
-	appl.logText.Wrapping = fyne.TextWrapWord
-	appl.logText.Disable()
-
-	appl.commandEntry.OnSubmitted = func(input string) {
-		appl.processCommand(input)
-		appl.commandEntry.SetText("")
-	}
-
-	logContainer := container.NewMax(
-		canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}),
-		appl.logText,
-	)
-
+	appl.infoLabel = widget.NewLabel("Ваш ход. Выберите фигуру.")
 	content := container.NewBorder(
 		nil,
-		container.NewVBox(
-			appl.infoLabel,
-			logContainer,
-			container.NewBorder(nil, nil, widget.NewLabel("Команда:"), nil, appl.commandEntry),
-		),
+		appl.infoLabel,
 		nil,
 		nil,
 		appl.grid,
 	)
 	appl.window.SetContent(content)
-	appl.window.Resize(fyne.NewSize(cellSize*8, cellSize*8+150))
+	appl.window.Resize(fyne.NewSize(cellSize*8, cellSize*8+50))
 
 	appl.window.SetCloseIntercept(func() {
 		search.SaveData()
@@ -115,210 +96,28 @@ func (appl *ChessApp) Run() {
 	myApp.Run()
 }
 
-func (app *ChessApp) processCommand(input string) {
-	if app.aiThinking {
-		app.infoLabel.SetText("Подождите, ИИ думает...")
-		return
-	}
-	parts := strings.Split(strings.TrimSpace(input), " ")
-
-	switch parts[0] {
-	case "play":
-		if len(parts) < 2 {
-			app.logMessage("Ошибка: укажите ход, например 'play e2e4'")
-			return
-		}
-		moveStr := parts[1]
-		if len(moveStr) != 4 {
-			app.logMessage("Ошибка: ход должен быть в формате 'e2e4'")
-			return
-		}
-		fromY := int(moveStr[0] - 'a')
-		fromX, _ := strconv.Atoi(string(moveStr[1]))
-		toY := int(moveStr[2] - 'a')
-		toX, _ := strconv.Atoi(string(moveStr[3]))
-		fromX, toX = fromX-1, toX-1
-		m := move.Move{FromX: fromX, FromY: fromY, ToX: toX, ToY: toY}
-
-		currentColor := app.currentPlayerColor()
-		legalMoves := move.GenerateMoves(app.currentBoard, currentColor)
-		isLegal := false
-		for _, legalMove := range legalMoves {
-			if legalMove == m {
-				isLegal = true
-				break
-			}
-		}
-		if !isLegal {
-			app.logMessage("Ошибка: ход не является легальным")
-			return
-		}
-
-		if err := move.MakeMove(&app.currentBoard, m); err != nil {
-			app.logMessage(fmt.Sprintf("Ошибка хода: %v", err))
-		} else {
-			app.logMessage(fmt.Sprintf("Ход: %s%d-%s%d", string('a'+fromY), fromX+1, string('a'+toY), toX+1))
-			app.playMoveSound()
-			app.moveCount++
-			app.moveHistory = append(app.moveHistory, m)
-			app.checkGameEnd(app.aiColor)
-			app.updateBoard()
-			app.logMessage(fmt.Sprintf("После хода игрока: moveCount=%d, currentColor=%v, aiColor=%v", app.moveCount, app.currentPlayerColor(), app.aiColor))
-			// Автоматический ход ИИ
-			if !app.gameOver && app.aiColor == oppositeColor(currentColor) {
-				app.logMessage("Вызываю makeAIMove для ИИ")
-				app.makeAIMove(4) // Убрали go для синхронности
-			}
-		}
-
-	case "move":
-		if len(parts) < 2 {
-			app.logMessage("Ошибка: укажите глубину, например 'move 4'")
-			return
-		}
-		depth, err := strconv.Atoi(parts[1])
-		if err != nil || depth <= 0 {
-			app.logMessage("Ошибка: глубина должна быть положительным числом")
-			return
-		}
-		app.makeAIMove(depth)
-
-	case "print":
-		app.logMessage(boardToString(app.currentBoard))
-
-	case "stats":
-		if app.lastStats.NodesEvaluated == 0 {
-			app.logMessage("Статистика недоступна: выполните поиск хода")
-		} else {
-			app.logMessage(fmt.Sprintf("Оценено узлов: %d", app.lastStats.NodesEvaluated))
-			app.logMessage(fmt.Sprintf("Время поиска: %v", app.lastStats.SearchTime))
-			app.logMessage(fmt.Sprintf("Скорость: %.2f узлов/с", float64(app.lastStats.NodesEvaluated)/app.lastStats.SearchTime.Seconds()))
-		}
-
-	case "reset":
-		app.currentBoard = board.NewBoard()
-		app.selectedX, app.selectedY = -1, -1
-		app.positions = make(map[string]int)
-		app.positions[boardToString(app.currentBoard)] = 1
-		app.gameOver = false
-		app.moveCount = 0
-		app.moveHistory = make([]move.Move, 0)
-		app.updateBoard()
-		app.logMessage("Доска сброшена")
-
-	case "switch":
-		app.aiColor = oppositeColor(app.aiColor)
-		app.logMessage(fmt.Sprintf("ИИ теперь играет за %v", app.aiColor))
-		if app.aiColor == app.currentPlayerColor() {
-			app.makeAIMove(4)
-		}
-
-	case "undo":
-		if len(app.moveHistory) == 0 {
-			app.logMessage("Нет ходов для отмены")
-			return
-		}
-		lastMove := app.moveHistory[len(app.moveHistory)-1]
-		app.moveHistory = app.moveHistory[:len(app.moveHistory)-1]
-		app.currentBoard = board.NewBoard()
-		app.positions = make(map[string]int)
-		app.positions[boardToString(app.currentBoard)] = 1
-		app.moveCount = 0
-		for _, m := range app.moveHistory {
-			move.MakeMove(&app.currentBoard, m)
-			app.moveCount++
-			app.positions[boardToString(app.currentBoard)]++
-		}
-		app.updateBoard()
-		app.gameOver = false
-		app.logMessage(fmt.Sprintf("Отменён ход: %s%d-%s%d", string('a'+lastMove.FromY), lastMove.FromX+1, string('a'+lastMove.ToY), lastMove.ToX+1))
-
-	case "eval":
-		score := evaluation.Evaluate(app.currentBoard)
-		app.logMessage(fmt.Sprintf("Оценка позиции: %d (положительно для белых)", score))
-
-	case "moves":
-		currentColor := app.currentPlayerColor()
-		moves := move.GenerateMoves(app.currentBoard, currentColor)
-		if len(moves) == 0 {
-			app.logMessage("Нет легальных ходов")
-		} else {
-			var moveList string
-			for _, m := range moves {
-				moveList += fmt.Sprintf("%s%d-%s%d ", string('a'+m.FromY), m.FromX+1, string('a'+m.ToY), m.ToX+1)
-			}
-			app.logMessage(fmt.Sprintf("Легальные ходы для %v: %s", currentColor, moveList))
-		}
-
-	case "exit":
-		search.SaveData()
-		app.window.Close()
-
-	default:
-		app.logMessage("Команды: move <depth>, play <move>, print, stats, reset, switch, undo, eval, moves, exit")
-	}
-}
-
-func (app *ChessApp) makeAIMove(depth int) {
-	if app.gameOver {
-		app.infoLabel.SetText("Игра завершена. Используйте 'reset' для новой игры.")
-		return
-	}
-
-	app.aiThinking = true
-	app.infoLabel.SetText("ИИ думает...")
-	app.logMessage(fmt.Sprintf("ИИ начинает поиск хода для %v на глубине %d", app.aiColor, depth))
-	bestMove, stats := search.FindBestMove(app.currentBoard, depth, app.aiColor)
-	app.lastStats = stats
-	app.logMessage(fmt.Sprintf("ИИ нашёл ход: %s%d-%s%d, статистика: %d узлов, %v", string('a'+bestMove.FromY), bestMove.FromX+1, string('a'+bestMove.ToY), bestMove.ToX+1, stats.NodesEvaluated, stats.SearchTime))
-
-	var message string
-	if bestMove.FromX == 0 && bestMove.FromY == 0 && bestMove.ToX == 0 && bestMove.ToY == 0 {
-		app.logMessage("ИИ не нашёл допустимых ходов")
-		if move.IsKingInCheck(app.currentBoard, app.aiColor) {
-			message = fmt.Sprintf("Мат! %v победили.", oppositeColor(app.aiColor))
-		} else {
-			message = "Пат! Ничья."
-		}
-	} else {
-		if err := move.MakeMove(&app.currentBoard, bestMove); err != nil {
-			app.logMessage(fmt.Sprintf("Ошибка хода ИИ: %v", err))
-			message = "Ошибка ИИ: " + err.Error()
-		} else {
-			app.logMessage(fmt.Sprintf("Ход ИИ (%v): %s%d-%s%d", app.aiColor, string('a'+bestMove.FromY), bestMove.FromX+1, string('a'+bestMove.ToY), bestMove.ToX+1))
-			app.playMoveSound()
-			app.moveCount++
-			app.moveHistory = append(app.moveHistory, bestMove)
-			app.checkGameEnd(oppositeColor(app.aiColor))
-			app.updateBoard()
-			message = "ИИ сделал ход. Ваш ход."
-		}
-	}
-	app.infoLabel.SetText(message)
-	app.aiThinking = false
-	if app.gameOver {
-		search.SaveData()
-	}
-}
-
 func (app *ChessApp) handleCellClick(x, y int) {
 	if app.aiThinking {
 		app.infoLabel.SetText("Подождите, ИИ думает...")
 		return
 	}
 	if app.gameOver {
-		app.infoLabel.SetText("Игра завершена. Используйте 'reset' для новой игры.")
+		app.infoLabel.SetText("Игра завершена.")
+		return
+	}
+	if app.paused {
+		app.infoLabel.SetText("Игра на паузе. Используйте 'pause' в консоли для продолжения.")
 		return
 	}
 	if app.aiColor == app.currentPlayerColor() {
-		app.infoLabel.SetText("Ход ИИ. Используйте 'move <depth>' или 'switch'.")
+		app.infoLabel.SetText("Пододждите. ИИ думает...")
 		return
 	}
 
 	if app.selectedX == -1 {
 		piece, color, err := app.currentBoard.GetPiece(x, y)
 		if err != nil {
-			app.logMessage(fmt.Sprintf("Ошибка при получении фигуры: %v", err))
+			log.Printf("Ошибка при получении фигуры: %v", err)
 			return
 		}
 		if piece != board.Empty && color != app.aiColor {
@@ -329,7 +128,7 @@ func (app *ChessApp) handleCellClick(x, y int) {
 	} else {
 		piece, color, err := app.currentBoard.GetPiece(x, y)
 		if err != nil {
-			app.logMessage(fmt.Sprintf("Ошибка при получении фигуры: %v", err))
+			log.Printf("Ошибка при получении фигуры: %v", err)
 			return
 		}
 		if piece != board.Empty && color != app.aiColor {
@@ -352,80 +151,154 @@ func (app *ChessApp) handleCellClick(x, y int) {
 		}
 
 		m := move.Move{FromX: app.selectedX, FromY: app.selectedY, ToX: x, ToY: y}
+		capturedPiece, capturedColor, _ := app.currentBoard.GetPiece(x, y)
+		m.Captured = capturedPiece
+		m.CapturedColor = capturedColor
 		if err := move.MakeMove(&app.currentBoard, m); err != nil {
 			app.infoLabel.SetText("Некорректный ход: " + err.Error())
 		} else {
-			app.logMessage(fmt.Sprintf("Ход игрока: %s%d-%s%d", string('a'+app.selectedY), app.selectedX+1, string('a'+y), x+1))
+			log.Printf("Ход игрока: %s%d-%s%d", string('a'+app.selectedY), app.selectedX+1, string('a'+y), x+1)
 			app.playMoveSound()
 			app.selectedX, app.selectedY = -1, -1
 			app.moveCount++
 			app.moveHistory = append(app.moveHistory, m)
 			app.checkGameEnd(app.aiColor)
 			app.updateBoard()
-			// app.logMessage(fmt.Sprintf("После хода игрока: moveCount=%d, currentColor=%v, aiColor=%v", app.moveCount, app.currentPlayerColor(), app.aiColor))
-			// Автоматический ход ИИ
-			if !app.gameOver && app.aiColor != oppositeColor(app.currentPlayerColor()) {
-				app.logMessage("Вызываю makeAIMove для ИИ")
-				app.makeAIMove(4) // Убрали go для синхронности
+			if !app.gameOver && !app.paused && app.aiColor != oppositeColor(app.currentPlayerColor()) {
+				log.Printf("После хода игрока: moveCount=%d, currentColor=%v, aiColor=%v, вызываю ход ИИ", app.moveCount, app.currentPlayerColor(), app.aiColor)
+				app.makeAIMove(app.aiDepth) // Убрали go для синхронности
 			}
 		}
 	}
 }
 
-// Остальные функции (logMessage, boardToString, etc.) остаются без изменений
-func (app *ChessApp) logMessage(msg string) {
-	log.Println(msg)
-	app.logText.SetText(app.logText.Text + msg + "\n")
-}
+func (app *ChessApp) makeAIMove(depth int) {
+	if app.gameOver || app.paused {
+		return
+	}
 
-func boardToString(b board.Board) string {
-	var s string
-	for i := 7; i >= 0; i-- {
-		s += fmt.Sprintf("%d | ", i+1)
-		for j := 0; j < 8; j++ {
-			piece, color, _ := b.GetPiece(i, j)
-			if piece == board.Empty {
-				s += ". "
-			} else {
-				symbol := pieceToSymbol(piece, color)
-				s += symbol + " "
-			}
+	app.aiThinking = true
+	app.infoLabel.SetText("ИИ думает...")
+	log.Printf("ИИ думает... (глубина=%d)", depth)
+
+	bestMove, stats := search.FindBestMove(app.currentBoard, depth, app.aiColor)
+	app.lastStats = stats
+
+	if bestMove.FromX == 0 && bestMove.FromY == 0 && bestMove.ToX == 0 && bestMove.ToY == 0 {
+		log.Printf("ИИ не нашёл допустимых ходов")
+		if move.IsKingInCheck(app.currentBoard, app.aiColor) {
+			app.infoLabel.SetText(fmt.Sprintf("Мат! %v победили.", oppositeColor(app.aiColor)))
+		} else {
+			app.infoLabel.SetText("Пат! Ничья.")
 		}
-		s += "\n"
+		app.gameOver = true
+	} else {
+		capturedPiece, capturedColor, _ := app.currentBoard.GetPiece(bestMove.ToX, bestMove.ToY)
+		bestMove.Captured = capturedPiece
+		bestMove.CapturedColor = capturedColor
+		if bestMove.FromX == bestMove.ToX && (bestMove.FromY-bestMove.ToY == 2 || bestMove.ToY-bestMove.FromY == 2) {
+			bestMove.IsCastling = true
+		}
+
+		if err := move.MakeMove(&app.currentBoard, bestMove); err != nil {
+			log.Printf("Ошибка хода ИИ: %v", err)
+			app.infoLabel.SetText("Ошибка ИИ: " + err.Error())
+		} else {
+			log.Printf("Ход ИИ (%v): %s%d-%s%d", app.aiColor, string('a'+bestMove.FromY), bestMove.FromX+1, string('a'+bestMove.ToY), bestMove.ToX+1)
+			app.playMoveSound()
+			app.moveCount++
+			app.moveHistory = append(app.moveHistory, bestMove)
+			app.checkGameEnd(oppositeColor(app.aiColor))
+			app.updateBoard()
+			app.infoLabel.SetText("ИИ сделал ход. Ваш ход.")
+		}
 	}
-	s += "  +-----------------\n"
-	s += "    a b c d e f g h"
-	return s
+	app.aiThinking = false
+	if app.gameOver {
+		search.SaveData()
+	}
 }
 
-func pieceToSymbol(piece board.Piece, color board.Color) string {
-	symbols := map[board.Piece]string{
-		board.Pawn:   "P",
-		board.Rook:   "R",
-		board.Knight: "N",
-		board.Bishop: "B",
-		board.Queen:  "Q",
-		board.King:   "K",
+// Команды консоли
+func (app *ChessApp) PrintStats() {
+	if app.lastStats.NodesEvaluated == 0 {
+		log.Println("Статистика ИИ недоступна: ИИ ещё не делал ходов")
+	} else {
+		log.Printf("Статистика ИИ: Оценено узлов: %d, Время поиска: %v, Скорость: %.2f узлов/с",
+			app.lastStats.NodesEvaluated, app.lastStats.SearchTime, float64(app.lastStats.NodesEvaluated)/app.lastStats.SearchTime.Seconds())
 	}
-	s := symbols[piece]
-	if color == board.Black {
-		s = strings.ToLower(s)
+	log.Printf("Статистика игрока: Сделано ходов: %d", app.moveCount/2)
+}
+
+func (app *ChessApp) PrintLastMoveEval() {
+	if len(app.moveHistory) == 0 {
+		log.Println("Нет ходов для оценки")
+		return
 	}
-	return s
+	lastMove := app.moveHistory[len(app.moveHistory)-1]
+	tempBoard := app.currentBoard
+	move.UndoMove(&tempBoard, lastMove)
+	score := evaluation.Evaluate(tempBoard)
+	log.Printf("Оценка позиции перед последним ходом %s%d-%s%d: %d (положительно для белых)", string('a'+lastMove.FromY), lastMove.FromX+1, string('a'+lastMove.ToY), lastMove.ToX+1, score)
+}
+
+func (app *ChessApp) SwitchAIColor() {
+	app.aiColor = oppositeColor(app.aiColor)
+	log.Printf("ИИ теперь играет за %v", app.aiColor)
+	if !app.gameOver && !app.paused && app.aiColor == app.currentPlayerColor() {
+		app.makeAIMove(app.aiDepth)
+	}
+}
+
+func (app *ChessApp) TogglePause() {
+	app.paused = !app.paused
+	if app.paused {
+		log.Println("Игра приостановлена")
+		app.infoLabel.SetText("Игра на паузе")
+	} else {
+		log.Println("Игра возобновлена")
+		app.infoLabel.SetText("Ваш ход. Выберите фигуру.")
+		if !app.gameOver && app.aiColor == app.currentPlayerColor() {
+			app.makeAIMove(app.aiDepth)
+		}
+	}
+}
+
+func (app *ChessApp) SetAIDepth(depth int) {
+	app.aiDepth = depth
+	log.Printf("Глубина поиска ИИ установлена на %d", depth)
+}
+
+func (app *ChessApp) ResetGame() {
+	app.currentBoard = board.NewBoard()
+	app.selectedX, app.selectedY = -1, -1
+	app.positions = make(map[string]int)
+	app.positions[boardToString(app.currentBoard)] = 1
+	app.gameOver = false
+	app.aiThinking = false
+	app.moveCount = 0
+	app.moveHistory = make([]move.Move, 0)
+	app.paused = false
+	app.updateBoard()
+	app.infoLabel.SetText("Игра сброшена. Ваш ход.")
+	log.Println("Игра сброшена")
+	if app.aiColor == app.currentPlayerColor() {
+		app.makeAIMove(app.aiDepth)
+	}
 }
 
 func (app *ChessApp) playMoveSound() {
 	go func() {
 		file, err := os.Open("moveSound.mp3")
 		if err != nil {
-			app.logMessage("Файл moveSound.mp3 не найден")
+			log.Printf("Файл moveSound.mp3 не найден")
 			return
 		}
 		defer file.Close()
 
 		streamer, _, err := mp3.Decode(file)
 		if err != nil {
-			app.logMessage(fmt.Sprintf("Ошибка декодирования MP3: %v", err))
+			log.Printf("Ошибка декодирования MP3: %v", err)
 			return
 		}
 		defer streamer.Close()
@@ -440,15 +313,15 @@ func (app *ChessApp) checkGameEnd(nextColor board.Color) {
 	app.positions[positionHash]++
 	if move.IsKingInCheck(app.currentBoard, nextColor) && app.isCheckmate(nextColor) {
 		app.infoLabel.SetText(fmt.Sprintf("Мат! %v победили.", oppositeColor(nextColor)))
-		app.logMessage(fmt.Sprintf("Игра завершена: мат %v", nextColor))
+		log.Printf("Игра завершена: мат %v", nextColor)
 		app.gameOver = true
 	} else if app.isCheckmate(nextColor) {
 		app.infoLabel.SetText("Пат! Ничья.")
-		app.logMessage("Игра завершена: пат")
+		log.Printf("Игра завершена: пат")
 		app.gameOver = true
 	} else if app.positions[positionHash] >= 3 {
 		app.infoLabel.SetText("Ничья по правилу трёхкратного повторения!")
-		app.logMessage("Игра завершена: ничья по правилу трёхкратного повторения")
+		log.Printf("Игра завершена: ничья по правилу трёхкратного повторения")
 		app.gameOver = true
 	}
 }
@@ -553,7 +426,7 @@ func (app *ChessApp) createFigure(piece board.Piece, color board.Color) fyne.Can
 
 func (app *ChessApp) handleRightClick() {
 	if app.gameOver {
-		app.infoLabel.SetText("Игра завершена. Используйте 'reset' для новой игры.")
+		app.infoLabel.SetText("Игра завершена.")
 		return
 	}
 	if app.aiThinking {
@@ -596,11 +469,7 @@ func (app *ChessApp) updateBoard() {
 	app.grid = app.createBoardGrid()
 	app.window.SetContent(container.NewBorder(
 		nil,
-		container.NewVBox(
-			app.infoLabel,
-			container.NewMax(canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}), app.logText),
-			container.NewBorder(nil, nil, widget.NewLabel("Команда:"), nil, app.commandEntry),
-		),
+		app.infoLabel,
 		nil,
 		nil,
 		app.grid,
@@ -617,4 +486,40 @@ func (app *ChessApp) createBoardGrid() *fyne.Container {
 		}
 	}
 	return grid
+}
+
+func boardToString(b board.Board) string {
+	var s string
+	for i := 7; i >= 0; i-- {
+		s += fmt.Sprintf("%d | ", i+1)
+		for j := 0; j < 8; j++ {
+			piece, color, _ := b.GetPiece(i, j)
+			if piece == board.Empty {
+				s += ". "
+			} else {
+				symbol := pieceToSymbol(piece, color)
+				s += symbol + " "
+			}
+		}
+		s += "\n"
+	}
+	s += "  +-----------------\n"
+	s += "    a b c d e f g h"
+	return s
+}
+
+func pieceToSymbol(piece board.Piece, color board.Color) string {
+	symbols := map[board.Piece]string{
+		board.Pawn:   "P",
+		board.Rook:   "R",
+		board.Knight: "N",
+		board.Bishop: "B",
+		board.Queen:  "Q",
+		board.King:   "K",
+	}
+	s := symbols[piece]
+	if color == board.Black {
+		s = strings.ToLower(s)
+	}
+	return s
 }

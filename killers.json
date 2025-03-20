@@ -5,14 +5,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -21,14 +27,20 @@
       "FromY": 6,
       "ToX": 2,
       "ToY": 5,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 3,
       "FromY": 3,
       "ToX": 4,
       "ToY": 4,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -37,14 +49,20 @@
       "FromY": 5,
       "ToX": 4,
       "ToY": 7,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 5,
       "FromY": 5,
       "ToX": 4,
       "ToY": 7,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -53,14 +71,20 @@
       "FromY": 5,
       "ToX": 2,
       "ToY": 3,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 5,
       "ToX": 2,
       "ToY": 3,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -69,14 +93,20 @@
       "FromY": 1,
       "ToX": 5,
       "ToY": 2,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 7,
       "FromY": 1,
       "ToX": 5,
       "ToY": 2,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -85,14 +115,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -101,14 +137,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -117,14 +159,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -133,14 +181,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -149,14 +203,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -165,14 +225,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -181,14 +247,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -197,14 +269,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -213,14 +291,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -229,14 +313,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -245,14 +335,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -261,14 +357,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -277,14 +379,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -293,14 +401,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -309,14 +423,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -325,14 +445,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -341,14 +467,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -357,14 +489,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -373,14 +511,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -389,14 +533,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -405,14 +555,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -421,14 +577,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -437,14 +599,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -453,14 +621,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -469,14 +643,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -485,14 +665,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ],
   [
@@ -501,14 +687,20 @@
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     },
     {
       "FromX": 0,
       "FromY": 0,
       "ToX": 0,
       "ToY": 0,
-      "PromoteTo": 0
+      "PromoteTo": 0,
+      "Captured": 0,
+      "CapturedColor": 0,
+      "IsCastling": false
     }
   ]
 ]
