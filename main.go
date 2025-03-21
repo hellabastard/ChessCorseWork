@@ -81,6 +81,9 @@ func handleConsoleCommands(app *ui.ChessApp) {
 				}
 			}
 
+		case "print":
+			//выводим доску в консоль
+
 		default:
 			log.Println("Неверная команда")
 		}

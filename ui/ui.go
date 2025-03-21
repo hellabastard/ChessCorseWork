@@ -27,8 +27,8 @@ const (
 
 var (
 	pieceColors = map[board.Color]color.Color{
-		board.White: color.White,
 		board.Black: color.Black,
+		board.White: color.White,
 	}
 	selectedColor      = color.RGBA{R: 255, G: 255, B: 0, A: 50}
 	availableMoveColor = color.RGBA{R: 0, G: 255, B: 0, A: 50}
@@ -281,9 +281,9 @@ func (app *ChessApp) createCell(x, y int) fyne.CanvasObject {
 	lightColor := color.RGBA{R: 240, G: 217, B: 181, A: 255}
 	darkColor := color.RGBA{R: 181, G: 136, B: 99, A: 255}
 
-	cellColor := lightColor
+	cellColor := darkColor
 	if (x+y)%2 == 1 {
-		cellColor = darkColor
+		cellColor = lightColor
 	}
 
 	background := canvas.NewRectangle(cellColor)
