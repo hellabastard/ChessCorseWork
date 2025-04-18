@@ -59,7 +59,7 @@ func (b Board) IsEmpty(x, y int) bool {
 	return b[x][y].Piece == Empty
 }
 
-//Cоздание глубокой копии доски
+// Cоздание глубокой копии доски
 func (b Board) Copy() Board {
 	var newBoard Board
 	for i := 0; i < 8; i++ {

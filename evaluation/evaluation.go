@@ -16,7 +16,7 @@ var PieceValues = map[board.Piece]int{
 	board.King:   20000,
 }
 
-//Бонусы за контроль центра для пешек и легких фигур
+// Бонусы за контроль центра для пешек и легких фигур
 var centerBonus = [8][8]int{
 	{0, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0},
@@ -39,19 +39,19 @@ func Evaluate(b board.Board) int {
 			if piece == board.Empty {
 				continue
 			}
-			//Индекс клетки в 64-битной маске: i*8 + j
+			//Индекс клетки в 64-битной маске
 			bitPos := uint(i*8 + j)
 			if color == board.White {
 				whitePieces |= (1 << bitPos)
 				score += PieceValues[piece]
-				//Бонус за центр для пешек и легких фигур
+				//Бонус за контроль центра для пешек и легких фигур
 				if piece == board.Pawn || piece == board.Knight || piece == board.Bishop {
 					score += centerBonus[i][j]
 				}
 			} else {
 				blackPieces |= (1 << bitPos)
 				score -= PieceValues[piece]
-				//Штраф за центр для черных (отзеркаливаем доску)
+				//Штраф за контроль центра для черных (отзеркаливаем доску)
 				if piece == board.Pawn || piece == board.Knight || piece == board.Bishop {
 					score -= centerBonus[7-i][j]
 				}
@@ -62,7 +62,7 @@ func Evaluate(b board.Board) int {
 	//Подсчет активных фигур
 	whiteCount := util.PopCount(whitePieces)
 	blackCount := util.PopCount(blackPieces)
-	//Бонус за мобильность
+	//Бонус за мобильность на основе количества фигур
 	score += (whiteCount - blackCount) * 10
 
 	//Штраф за короля под шахом
@@ -73,14 +73,14 @@ func Evaluate(b board.Board) int {
 		score += 50
 	}
 
-	//Безопасность короля
+	//Бонус за безопасность короля
 	score += kingSafety(b, board.White)
 	score -= kingSafety(b, board.Black)
 
 	return score
 }
 
-//Оценка безопасности короля
+// Оценка безопасности короля
 func kingSafety(b board.Board, color board.Color) int {
 	safetyScore := 0
 
@@ -108,7 +108,7 @@ func kingSafety(b board.Board, color board.Color) int {
 			if piece != board.Empty && pieceColor == opponentColor {
 				//Вычисляем расстояние до короля, учитывая только близкие фигуры
 				distance := int(math.Sqrt(float64((x-kingX)*(x-kingX) + (y-kingY)*(y-kingY))))
-				if distance > 0 && distance <= 3 { 
+				if distance > 0 && distance <= 3 {
 					switch piece {
 					case board.Pawn:
 						safetyScore -= 5 / distance
@@ -126,7 +126,7 @@ func kingSafety(b board.Board, color board.Color) int {
 		}
 	}
 
-	//Бонус за пешки рядом с королём (защита)
+	//Бонус за защиту короля пешками
 	for dx := -1; dx <= 1; dx++ {
 		for dy := -1; dy <= 1; dy++ {
 			nx, ny := kingX+dx, kingY+dy

@@ -67,8 +67,9 @@ func handleConsoleCommands(app *ui.ChessApp) {
 			if len(parts) < 2 {
 				log.Println("Укажите флаг выхода")
 			} else {
-				flag, err := strconv.Atoi(parts[1])
-				if err != nil || !(contains(flagArray, 0)) || !(contains(flagArray, 1)) {
+				flagStr := parts[1]
+				flag, err := strconv.Atoi(flagStr)
+				if err != nil || !(contains(flagArray, flag)) {
 					log.Println("Ошибка! Не найден флаг")
 				} else {
 					app.Exit(flag)
@@ -81,7 +82,6 @@ func handleConsoleCommands(app *ui.ChessApp) {
 }
 
 func main() {
-	fmt.Println("Программа запущена")
 	//Открытие лог файла
 	logFile, err := os.Create(filepath.Join("logs", "log"+strconv.Itoa(gameCounter)+".txt"))
 	if err != nil {
@@ -89,21 +89,80 @@ func main() {
 	}
 	defer logFile.Close()
 
-	//Настройка вывода в консоль и лог 
+	//Настройка вывода в консоль и лог
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
 
 	//Вывод заставки
-	fmt.Println("Курсовая работа на тему: игра Шахматы\nВыполнил: студент группы 24ВВВ1 Будников А.С.\nПриняла: к.т.н. доцент Генералова А.А.")
-	//Ожидаем нажатия Enter для начала игры
-	fmt.Printf("\nДля запуска игры нажмите Enter...")
 	reader := bufio.NewReader(os.Stdin)
-	_, _ = reader.ReadString('\n')
 
-	//Запуск приложения
-	chessApp := ui.NewChessApp()
-	go handleConsoleCommands(chessApp)
-	chessApp.Run()
+	for {
+		fmt.Println("Курсовая работа на тему: игра Шахматы\nВыполнил: студент группы 24ВВВ1 Будников А.С.\nПриняла: к.т.н. доцент Генералова А.А.\n")
+		fmt.Println("Выберите один из пунктов меню\n1. Начать игру\n2. Настройки\n3. Выход")
+		fmt.Print("\nМой выбор: ")
+
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Ошибка при чтении ввода:", err)
+			continue
+		}
+
+		choice := strings.TrimSpace(input)
+		chessApp := ui.NewChessApp()
+
+		switch choice {
+		case "1":
+			// Запуск приложения
+			go handleConsoleCommands(chessApp)
+			chessApp.Run()
+			return
+		case "2":
+			// Настройки
+			for {
+				fmt.Println("\n=== МЕНЮ НАСТРОЕК ===")
+				fmt.Printf("1. Глубина поиска AI (текущая: %d)\n", chessApp.GetAiDepth())
+				fmt.Println("3. Вернуться в главное меню")
+				fmt.Print("\nМой выбор: ")
+
+				input, err := reader.ReadString('\n')
+				if err != nil {
+					fmt.Println("Ошибка при чтении ввода:", err)
+					continue
+				}
+
+				choice := strings.TrimSpace(input)
+				switch choice {
+				case "1":
+					fmt.Print("Введите новую глубину поиска AI: ")
+					input, err := reader.ReadString('\n')
+					if err != nil {
+						fmt.Println("Ошибка при чтении ввода:", err)
+						continue
+					}
+					depth, err := strconv.Atoi(strings.TrimSpace(input))
+					if err != nil || depth <= 0 {
+						fmt.Println("Ошибка: глубина должна быть положительным числом")
+						continue
+					} else {
+						chessApp.SetAIDepth(depth)
+						fmt.Printf("Глубина поиска AI установлена: %d\n", depth)
+						continue
+					}
+				case "3":
+					return
+				default:
+					fmt.Println("Неверный выбор, попробуйте снова.")
+				}
+			}
+		case "3":
+			// Выход
+			fmt.Println("Выход из программы")
+			return
+		default:
+			fmt.Println("Неверный выбор, попробуйте снова.")
+			continue
+		}
+	}
 }
 
 func contains(arr []int, value int) bool {

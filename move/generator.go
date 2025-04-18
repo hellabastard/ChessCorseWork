@@ -2,7 +2,7 @@ package move
 
 import "chess-engine/board"
 
-//Uенератор всех возможных ходов для указанного цвета
+//Генератор всех возможных ходов для указанного цвета
 func GenerateMoves(b board.Board, color board.Color) []Move {
 	var moves []Move
 
@@ -26,7 +26,6 @@ func GenerateMoves(b board.Board, color board.Color) []Move {
 				moves = append(moves, generateQueenMoves(b, i, j, color)...)
 			case board.King:
 				moves = append(moves, generateKingMoves(b, i, j, color)...)
-				// Добавляем рокировку
 				moves = append(moves, generateCastlingMoves(b, i, j, color)...)
 			}
 		}
@@ -37,7 +36,7 @@ func GenerateMoves(b board.Board, color board.Color) []Move {
 	for _, m := range moves {
 		newBoard := b
 		if err := MakeMove(&newBoard, m); err == nil {
-			if !IsKingInCheck(newBoard, color) { //Используем IsKingInCheck напрямую, так как она в том же пакете
+			if !IsKingInCheck(newBoard, color) {
 				validMoves = append(validMoves, m)
 			}
 		}
@@ -52,7 +51,7 @@ func generateCastlingMoves(b board.Board, x, y int, color board.Color) []Move {
 
 	//Проверяем, может ли король рокироваться
 	if x == 0 && y == 4 && color == board.White || x == 7 && y == 4 && color == board.Black {
-		//Короткая рокировка (O-O)
+		//Короткая рокировка
 		if b.IsEmpty(x, y+1) && b.IsEmpty(x, y+2) {
 			rookPiece, rookColor, _ := b.GetPiece(x, y+3)
 			if rookPiece == board.Rook && rookColor == color {
@@ -60,7 +59,7 @@ func generateCastlingMoves(b board.Board, x, y int, color board.Color) []Move {
 			}
 		}
 
-		//Длинная рокировка (O-O-O)
+		//Длинная рокировка
 		if b.IsEmpty(x, y-1) && b.IsEmpty(x, y-2) && b.IsEmpty(x, y-3) {
 			rookPiece, rookColor, _ := b.GetPiece(x, y-4)
 			if rookPiece == board.Rook && rookColor == color {

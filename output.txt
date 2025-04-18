@@ -1,4 +1,0 @@
-# cd C:\Users\IWOFLEUR; git -c log.showsignature=false log -1 --format=%H:%ct
-fatal: your current branch 'master' does not have any commits yet
-github.com/go-gl/gl/v2.1/gl
-^C

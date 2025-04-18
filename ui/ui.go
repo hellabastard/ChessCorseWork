@@ -41,10 +41,10 @@ type ChessApp struct {
 	grid                 *fyne.Container
 	infoLabel            *widget.Label
 	logText              *widget.Entry
-	positions            map[string]int // История позиций для правила трёхкратного повторения
-	gameOver             bool           // Флаг окончания игры
-	aiThinking           bool           // Флаг, показывающий, что ИИ думает
-	moveCount            int            // Счётчик ходов для определения первого хода
+	positions            map[string]int
+	gameOver             bool
+	aiThinking           bool
+	moveCount            int
 	paused               bool
 	aiDepth              int
 }
@@ -63,7 +63,7 @@ func NewChessApp() *ChessApp {
 		aiThinking:   false,
 		moveCount:    0,
 		paused:       false,
-		aiDepth:      5,
+		aiDepth:      20,
 	}
 	app.positions[boardToString(app.currentBoard)] = 1
 	return app
@@ -72,14 +72,19 @@ func NewChessApp() *ChessApp {
 func (appl *ChessApp) Run() {
 	myApp := app.New()
 	appl.window = myApp.NewWindow("Шахматы")
-
+	icon, err := fyne.LoadResourceFromPath("Icon.png")
+	if err != nil {
+		log.Printf("Ошибка загрузки иконки: %v", err)
+	} else {
+		appl.window.SetIcon(icon)
+	}
 	appl.grid = appl.createBoardGrid()
 	appl.infoLabel = widget.NewLabel("Ваш ход. Выберите фигуру.")
 
 	// Настраиваем logText
 	appl.logText.MultiLine = true
 	appl.logText.Wrapping = fyne.TextWrapWord
-	appl.logText.Disable() // Используем Disable вместо SetReadOnly для Fyne 2.5.4
+	appl.logText.Disable()
 
 	// Оборачиваем logText в контейнер с тёмным фоном
 	logContainer := container.NewMax(
@@ -108,8 +113,15 @@ func (appl *ChessApp) Run() {
 }
 
 func (app *ChessApp) logMessage(msg string) {
-	log.Println(msg)
-	app.logText.SetText(app.logText.Text + msg + "\n")
+	if app.moveCount != 0 || app.moveCount%2 != 0 {
+		fyne.DoAndWait(func() {
+			log.Println(msg)
+			app.logText.SetText(app.logText.Text + msg + "\n")
+		})
+	} else {
+		log.Println(msg)
+		app.logText.SetText(app.infoLabel.Text + msg + "\n")
+	}
 }
 
 func boardToString(b board.Board) string {
@@ -127,7 +139,6 @@ func (app *ChessApp) playMoveSound() {
 	go func() {
 		file, err := os.Open("moveSound.mp3")
 		if err != nil {
-			app.logMessage("Файл moveSound.mp3 не найден, воспроизводим тон")
 			return
 		}
 		defer file.Close()
@@ -160,9 +171,9 @@ func (app *ChessApp) handleCellClick(x, y int) {
 			app.logMessage(fmt.Sprintf("Ошибка при получении фигуры: %v", err))
 			return
 		}
-		if piece != board.Empty && color == board.White && app.paused == false {
+		if piece != board.Empty && color == board.White && !app.paused {
 			app.selectedX, app.selectedY = x, y
-			app.infoLabel.SetText(fmt.Sprintf("Выбрана фигура на %c%d", 'a'+y, x+1))
+			app.infoLabel.SetText(fmt.Sprintf("Выбрана фигура на %c%d \n", 'a'+y, x+1))
 			app.updateBoard()
 		}
 	} else {
@@ -268,7 +279,9 @@ func (app *ChessApp) makeAIMove() {
 				}
 			}
 		}
-		app.infoLabel.SetText(message)
+		fyne.DoAndWait(func() {
+			app.infoLabel.SetText(message)
+		})
 		app.aiThinking = false
 		app.gameOver = message != "ИИ сделал ход. Ваш ход."
 		if app.gameOver {
@@ -409,8 +422,10 @@ func (app *ChessApp) isCheckmate(color board.Color) bool {
 
 func (app *ChessApp) updateBoard() {
 	app.grid = app.createBoardGrid()
-	app.window.SetContent(container.NewBorder(nil, container.NewVBox(app.infoLabel, container.NewMax(canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}), app.logText)), nil, nil, app.grid))
-	app.window.Content().Refresh()
+	fyne.DoAndWait(func() {
+		app.window.SetContent(container.NewBorder(nil, container.NewVBox(app.infoLabel, container.NewMax(canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}), app.logText)), nil, nil, app.grid))
+		app.window.Content().Refresh()
+	})
 }
 
 func (app *ChessApp) createBoardGrid() *fyne.Container {
@@ -470,10 +485,18 @@ func (app *ChessApp) Reset() {
 
 func (app *ChessApp) Exit(flag int) {
 	if flag == 0 {
-		app.window.Close()
+		fyne.DoAndWait(func() {
+			app.window.Close()
+		})
 		return
 	} else {
 		search.SaveData()
-		app.window.Close()
+		fyne.DoAndWait(func() {
+			app.window.Close()
+		})
 	}
+}
+
+func (app *ChessApp) GetAiDepth() int {
+	return app.aiDepth
 }

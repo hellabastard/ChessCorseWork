@@ -11,7 +11,7 @@ type Move struct {
 	PromoteTo    board.Piece //Фигура, в которую превращается пешка (0 если нет превращения)
 }
 
-//Выполняет ход на доске
+// Выполняет ход на доске
 func MakeMove(b *board.Board, m Move) error {
 	if m.FromX < 0 || m.FromX >= 8 || m.FromY < 0 || m.FromY >= 8 ||
 		m.ToX < 0 || m.ToX >= 8 || m.ToY < 0 || m.ToY >= 8 {
@@ -48,11 +48,11 @@ func MakeMove(b *board.Board, m Move) error {
 	//Если это рокировка, перемещаем ладью
 	if piece == board.King && abs(m.FromY-m.ToY) == 2 {
 		if m.ToY > m.FromY {
-			//Короткая рокировка (O-O)
+			//Короткая рокировка
 			newBoard.SetPiece(m.FromX, m.FromY+1, board.Rook, color)
 			newBoard.SetPiece(m.FromX, m.FromY+3, board.Empty, color)
 		} else {
-			//Длинная рокировка (O-O-O)
+			//Длинная рокировка
 			newBoard.SetPiece(m.FromX, m.FromY-1, board.Rook, color)
 			newBoard.SetPiece(m.FromX, m.FromY-4, board.Empty, color)
 		}
@@ -68,7 +68,7 @@ func MakeMove(b *board.Board, m Move) error {
 	return nil
 }
 
-//Проверяет, находится ли король под шахом
+// Проверяет, находится ли король под шахом
 func IsKingInCheck(b board.Board, color board.Color) bool {
 	//Находим позицию короля
 	var kingX, kingY int
@@ -109,7 +109,7 @@ func IsKingInCheck(b board.Board, color board.Color) bool {
 	return false
 }
 
-//Вспомогательная функция для вычисления абсолютного значения
+// Вспомогательная функция для вычисления абсолютного значения
 func abs(x int) int {
 	if x < 0 {
 		return -x

@@ -36,19 +36,23 @@ type SearchStats struct {
 }
 
 func LoadData() {
-	if data, err := os.ReadFile("transpositions.json"); err == nil {
-		if err := json.Unmarshal(data, &transpositionTable.data); err != nil {
-			fmt.Printf("Ошибка загрузки транспозиционной таблицы: %v\n", err)
-		} else {
-			fmt.Printf("Загружено %d позиций из транспозиционной таблицы\n", len(transpositionTable.data))
+	if _, err := os.Stat("transpositions.json"); err == nil {
+		if data, err := os.ReadFile("transpositions.json"); err == nil && len(data) > 0 {
+			if err := json.Unmarshal(data, &transpositionTable.data); err != nil {
+				fmt.Printf("Ошибка загрузки транспозиционной таблицы: %v\n", err)
+			} else {
+				fmt.Printf("Загружено %d позиций из транспозиционной таблицы\n", len(transpositionTable.data))
+			}
 		}
 	}
 
-	if data, err := os.ReadFile("killers.json"); err == nil {
-		if err := json.Unmarshal(data, &killerMoves); err != nil {
-			fmt.Printf("Ошибка загрузки killer moves: %v\n", err)
-		} else {
-			fmt.Println("Загружены killer moves")
+	if _, err := os.Stat("killers.json"); err == nil {
+		if data, err := os.ReadFile("killers.json"); err == nil && len(data) > 0 {
+			if err := json.Unmarshal(data, &killerMoves); err != nil {
+				fmt.Printf("Ошибка загрузки killer moves: %v\n", err)
+			} else {
+				fmt.Println("Загружены killer moves")
+			}
 		}
 	}
 }
@@ -231,7 +235,7 @@ func FindBestMove(b board.Board, depth int, boardColor board.Color) (move.Move, 
 	rand.Seed(time.Now().UnixNano())
 	maximizingPlayer := (boardColor == board.White)
 	start := time.Now()
-	timeLimit := 10 * time.Second
+	timeLimit := 15 * time.Second
 	deadline := start.Add(timeLimit)
 
 	stats := SearchStats{}
@@ -248,8 +252,8 @@ func FindBestMove(b board.Board, depth int, boardColor board.Color) (move.Move, 
 		return moves[0], stats // Возвращаем первый доступный ход
 	}
 
-	// Ограничиваем рандомизацию топ-3 ходами (или всеми, если их меньше)
-	maxChoices := 3
+	// Ограничиваем рандомизацию топ-2 ходами (или всеми, если их меньше)
+	maxChoices := 2
 	if len(res.BestMoves) < maxChoices {
 		maxChoices = len(res.BestMoves)
 	}
@@ -257,7 +261,7 @@ func FindBestMove(b board.Board, depth int, boardColor board.Color) (move.Move, 
 	sort.Slice(res.BestMoves, func(i, j int) bool {
 		return moveHeuristic(res.BestMoves[i]) > moveHeuristic(res.BestMoves[j])
 	})
-	// Выбираем случайный из топ-N
+	// Выбираем случайный из топ-2
 	return res.BestMoves[rand.Intn(maxChoices)], stats
 }
 
@@ -268,7 +272,7 @@ func moveHeuristic(m move.Move) int {
 	centerSquares := map[int]bool{27: true, 28: true, 35: true, 36: true} // e4, e5, d4, d5
 	toSquare := m.ToX*8 + m.ToY
 	if centerSquares[toSquare] {
-		score += 10
+		score += 30
 	}
 	return score
 }
