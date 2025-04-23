@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"chess-engine/search"
 	"chess-engine/ui"
 	"fmt"
 	"io"
@@ -23,7 +24,6 @@ func init() {
 		log.Fatalf("Ошибка создания папки logs: %v", err)
 	}
 
-	//Номер след файла
 	files, err := filepath.Glob("logs/log*.txt")
 	if err != nil {
 		log.Fatalf("Ошибка чтения файлов логов: %v", err)
@@ -41,7 +41,6 @@ func handleConsoleCommands(app *ui.ChessApp) {
 		switch parts[0] {
 		case "pause":
 			app.Pause()
-
 		case "depth=":
 			if len(parts) < 2 {
 				log.Println("Ошибка: укажите глубину")
@@ -53,16 +52,12 @@ func handleConsoleCommands(app *ui.ChessApp) {
 					app.SetAIDepth(depth)
 				}
 			}
-
 		case "reset":
 			app.Reset()
-
 		case "eval":
 			app.PrintLastMoveEval()
-
 		case "help":
 			log.Println("pause, help, depth= <value>, reset, eval, exit= <flag>")
-
 		case "exit=":
 			if len(parts) < 2 {
 				log.Println("Укажите флаг выхода")
@@ -82,22 +77,21 @@ func handleConsoleCommands(app *ui.ChessApp) {
 }
 
 func main() {
-	//Открытие лог файла
 	logFile, err := os.Create(filepath.Join("logs", "log"+strconv.Itoa(gameCounter)+".txt"))
 	if err != nil {
 		log.Fatalf("Ошибка создания файла логов: %v", err)
 	}
 	defer logFile.Close()
 
-	//Настройка вывода в консоль и лог
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
 
-	//Вывод заставки
 	reader := bufio.NewReader(os.Stdin)
+	chessApp := ui.NewChessApp()
 
+mainLoop:
 	for {
-		fmt.Println("Курсовая работа на тему: игра Шахматы\nВыполнил: студент группы 24ВВВ1 Будников А.С.\nПриняла: к.т.н. доцент Генералова А.А.\n")
+		fmt.Println("\nКурсовая работа на тему: игра Шахматы\nВыполнил: студент группы 24ВВВ1 Будников А.С.\nПриняла: к.т.н. доцент Генералова А.А.\n")
 		fmt.Println("Выберите один из пунктов меню\n1. Начать игру\n2. Настройки\n3. Выход")
 		fmt.Print("\nМой выбор: ")
 
@@ -108,19 +102,17 @@ func main() {
 		}
 
 		choice := strings.TrimSpace(input)
-		chessApp := ui.NewChessApp()
 
 		switch choice {
 		case "1":
-			// Запуск приложения
 			go handleConsoleCommands(chessApp)
 			chessApp.Run()
 			return
 		case "2":
-			// Настройки
 			for {
 				fmt.Println("\n=== МЕНЮ НАСТРОЕК ===")
 				fmt.Printf("1. Глубина поиска AI (текущая: %d)\n", chessApp.GetAiDepth())
+				fmt.Printf("2. Максимальное время поиска AI (текущая: %d)\n", search.GetTimeLimit())
 				fmt.Println("3. Вернуться в главное меню")
 				fmt.Print("\nМой выбор: ")
 
@@ -148,14 +140,29 @@ func main() {
 						fmt.Printf("Глубина поиска AI установлена: %d\n", depth)
 						continue
 					}
+				case "2":
+					fmt.Print("Введите новое максимальное время поиска AI: ")
+					input, err := reader.ReadString('\n')
+					if err != nil {
+						fmt.Println("Ошибка при чтении ввода:", err)
+						continue
+					}
+					timer, err := strconv.Atoi(strings.TrimSpace(input))
+					if err != nil || timer <= 0 {
+						fmt.Println("Ошибка: время должно быть положительным числом")
+						continue
+					} else {
+						search.SetTimeLimit(timer)
+						fmt.Printf("Максимальное время поиска AI установлена: %d\n", search.GetTimeLimit())
+						continue
+					}
 				case "3":
-					return
+					continue mainLoop // Возвращаемся в главное меню
 				default:
 					fmt.Println("Неверный выбор, попробуйте снова.")
 				}
 			}
 		case "3":
-			// Выход
 			fmt.Println("Выход из программы")
 			return
 		default:

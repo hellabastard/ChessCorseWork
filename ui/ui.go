@@ -50,9 +50,6 @@ type ChessApp struct {
 }
 
 func NewChessApp() *ChessApp {
-	// Загружаем данные ИИ при создании приложения
-	search.LoadData()
-
 	app := &ChessApp{
 		currentBoard: board.NewBoard(),
 		selectedX:    -1,
@@ -70,6 +67,7 @@ func NewChessApp() *ChessApp {
 }
 
 func (appl *ChessApp) Run() {
+	search.LoadData()
 	myApp := app.New()
 	appl.window = myApp.NewWindow("Шахматы")
 	icon, err := fyne.LoadResourceFromPath("Icon.png")
@@ -114,10 +112,12 @@ func (appl *ChessApp) Run() {
 
 func (app *ChessApp) logMessage(msg string) {
 	if app.moveCount != 0 || app.moveCount%2 != 0 {
-		fyne.DoAndWait(func() {
-			log.Println(msg)
-			app.logText.SetText(app.logText.Text + msg + "\n")
-		})
+		go func() {
+			fyne.DoAndWait(func() {
+				log.Println(msg)
+				app.logText.SetText(app.logText.Text + msg + "\n")
+			})
+		}()
 	} else {
 		log.Println(msg)
 		app.logText.SetText(app.infoLabel.Text + msg + "\n")
@@ -422,10 +422,13 @@ func (app *ChessApp) isCheckmate(color board.Color) bool {
 
 func (app *ChessApp) updateBoard() {
 	app.grid = app.createBoardGrid()
-	fyne.DoAndWait(func() {
-		app.window.SetContent(container.NewBorder(nil, container.NewVBox(app.infoLabel, container.NewMax(canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}), app.logText)), nil, nil, app.grid))
-		app.window.Content().Refresh()
-	})
+	go func() {
+		fyne.DoAndWait(func() {
+			app.window.SetContent(container.NewBorder(nil, container.NewVBox(app.infoLabel, container.NewMax(canvas.NewRectangle(color.RGBA{R: 30, G: 30, B: 30, A: 255}), app.logText)), nil, nil, app.grid))
+			app.window.Content().Refresh()
+		})
+	}()
+
 }
 
 func (app *ChessApp) createBoardGrid() *fyne.Container {
@@ -457,10 +460,18 @@ func (app *ChessApp) Pause() {
 	app.paused = !app.paused
 	if app.paused {
 		log.Println("Игра приостановлена")
-		app.infoLabel.SetText("Игра приостановлена")
+		go func() {
+			fyne.DoAndWait(func() {
+				app.infoLabel.SetText("Игра приостановлена")
+			})
+		}()
 	} else {
 		log.Println("Игра возобновлена")
-		app.infoLabel.SetText("Ваш ход. Выберите фигуру.")
+		go func() {
+			fyne.DoAndWait(func() {
+				app.infoLabel.SetText("Ваш ход. Выберите фигуру.")
+			})
+		}()
 	}
 }
 

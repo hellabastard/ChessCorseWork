@@ -231,11 +231,12 @@ func QuiescenceSearch(b board.Board, alpha int, beta int, maximizingPlayer bool,
 	return beta
 }
 
+var timeLimit time.Duration = 15 * time.Second
+
 func FindBestMove(b board.Board, depth int, boardColor board.Color) (move.Move, SearchStats) {
 	rand.Seed(time.Now().UnixNano())
 	maximizingPlayer := (boardColor == board.White)
 	start := time.Now()
-	timeLimit := 15 * time.Second
 	deadline := start.Add(timeLimit)
 
 	stats := SearchStats{}
@@ -289,6 +290,14 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func GetTimeLimit() time.Duration {
+	return timeLimit / time.Second
+}
+
+func SetTimeLimit(k int) {
+	timeLimit = time.Duration(k) * time.Second
 }
 
 func sortMoves(moves []move.Move, b board.Board, depth int) {
