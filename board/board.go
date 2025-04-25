@@ -39,7 +39,7 @@ func NewBoard() Board {
 
 func (b Board) GetPiece(x, y int) (Piece, Color, error) {
 	if x < 0 || x >= 8 || y < 0 || y >= 8 {
-		return Empty, White, errors.New("координаты за пределами доски")
+		return Empty, White, errors.New("кординаты за пределами доски")
 	}
 	return b[x][y].Piece, b[x][y].Color, nil
 }

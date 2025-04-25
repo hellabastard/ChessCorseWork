@@ -157,7 +157,7 @@ mainLoop:
 						continue
 					}
 				case "3":
-					continue mainLoop // Возвращаемся в главное меню
+					continue mainLoop
 				default:
 					fmt.Println("Неверный выбор, попробуйте снова.")
 				}
