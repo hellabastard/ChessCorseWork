@@ -76,6 +76,7 @@ func handleConsoleCommands(app *ui.ChessApp) {
 	}
 }
 
+// отдельная заставка
 func main() {
 	logFile, err := os.Create(filepath.Join("logs", "log"+strconv.Itoa(gameCounter)+".txt"))
 	if err != nil {
@@ -89,9 +90,11 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	chessApp := ui.NewChessApp()
 
+	fmt.Println("\nКурсовая работа на тему: игра Шахматы\nВыполнил: студент группы 24ВВВ1 Будников А.С.\nПриняла: к.т.н. доцент Генералова А.А.\n\nНажмите Enter для запуска меню")
+	_, _ = reader.ReadString('\n')
+
 mainLoop:
 	for {
-		fmt.Println("\nКурсовая работа на тему: игра Шахматы\nВыполнил: студент группы 24ВВВ1 Будников А.С.\nПриняла: к.т.н. доцент Генералова А.А.\n")
 		fmt.Println("Выберите один из пунктов меню\n1. Начать игру\n2. Настройки\n3. Выход")
 		fmt.Print("\nМой выбор: ")
 

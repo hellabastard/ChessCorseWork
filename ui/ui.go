@@ -173,7 +173,7 @@ func (app *ChessApp) handleCellClick(x, y int) {
 		}
 		if piece != board.Empty && color == board.White && !app.paused {
 			app.selectedX, app.selectedY = x, y
-			app.infoLabel.SetText(fmt.Sprintf("Выбрана фигура на %c%d \n", 'a'+y, x+1))
+			app.infoLabel.SetText(fmt.Sprintf("Выбрана фигура на %c%d", 'a'+y, x+1))
 			app.updateBoard()
 		}
 	} else {

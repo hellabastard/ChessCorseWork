@@ -17,31 +17,31 @@
   ],
   [
     {
-      "FromX": 1,
-      "FromY": 4,
-      "ToX": 2,
-      "ToY": 4,
+      "FromX": 4,
+      "FromY": 1,
+      "ToX": 6,
+      "ToY": 0,
       "PromoteTo": 0
     },
     {
       "FromX": 1,
-      "FromY": 4,
+      "FromY": 2,
       "ToX": 2,
-      "ToY": 4,
+      "ToY": 2,
       "PromoteTo": 0
     }
   ],
   [
     {
-      "FromX": 4,
-      "FromY": 0,
-      "ToX": 1,
-      "ToY": 0,
+      "FromX": 7,
+      "FromY": 4,
+      "ToX": 7,
+      "ToY": 6,
       "PromoteTo": 0
     },
     {
-      "FromX": 4,
-      "FromY": 0,
+      "FromX": 6,
+      "FromY": 3,
       "ToX": 4,
       "ToY": 3,
       "PromoteTo": 0
@@ -51,31 +51,31 @@
     {
       "FromX": 1,
       "FromY": 1,
-      "ToX": 3,
-      "ToY": 1,
+      "ToX": 2,
+      "ToY": 0,
       "PromoteTo": 0
     },
     {
-      "FromX": 1,
-      "FromY": 1,
-      "ToX": 3,
-      "ToY": 1,
+      "FromX": 6,
+      "FromY": 2,
+      "ToX": 7,
+      "ToY": 0,
       "PromoteTo": 0
     }
   ],
   [
     {
-      "FromX": 0,
-      "FromY": 2,
-      "ToX": 0,
-      "ToY": 5,
+      "FromX": 7,
+      "FromY": 0,
+      "ToX": 6,
+      "ToY": 0,
       "PromoteTo": 0
     },
     {
-      "FromX": 0,
-      "FromY": 2,
-      "ToX": 0,
-      "ToY": 7,
+      "FromX": 2,
+      "FromY": 7,
+      "ToX": 1,
+      "ToY": 6,
       "PromoteTo": 0
     }
   ],
