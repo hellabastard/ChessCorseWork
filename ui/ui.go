@@ -428,7 +428,6 @@ func (app *ChessApp) updateBoard() {
 			app.window.Content().Refresh()
 		})
 	}()
-
 }
 
 func (app *ChessApp) createBoardGrid() *fyne.Container {
