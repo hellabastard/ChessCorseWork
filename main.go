@@ -76,7 +76,6 @@ func handleConsoleCommands(app *ui.ChessApp) {
 	}
 }
 
-// отдельная заставка
 func main() {
 	logFile, err := os.Create(filepath.Join("logs", "log"+strconv.Itoa(gameCounter)+".txt"))
 	if err != nil {
