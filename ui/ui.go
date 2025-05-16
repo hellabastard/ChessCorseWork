@@ -489,8 +489,10 @@ func (app *ChessApp) Reset() {
 	app.moveCount = 0
 	app.paused = false
 	app.updateBoard()
-	app.infoLabel.SetText("Игра сброшена. Ваш ход.")
-	log.Println("Игра сброшена")
+	fyne.DoAndWait(func() {
+		app.infoLabel.SetText("Игра сброшена. Ваш ход.")
+		log.Println("Игра сброшена")
+	})
 }
 
 func (app *ChessApp) Exit(flag int) {
